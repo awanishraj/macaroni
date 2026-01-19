@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>com.macaroni.fanhelper</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.macaroni.fanhelper</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>Macaroni Fan Helper</string>
+    <key>CFBundlePackageType</key>
+    <string>XPC!</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>SMAuthorizedClients</key>
+    <array>
+        <string>identifier "com.macaroni.app" and anchor apple generic and certificate leaf[subject.CN] = "Apple Development"</string>
+    </array>
+    <key>SMPrivilegedExecutables</key>
+    <dict>
+        <key>com.macaroni.fanhelper</key>
+        <string>identifier "com.macaroni.fanhelper" and anchor apple generic and certificate leaf[subject.CN] = "Apple Development"</string>
+    </dict>
+</dict>
+</plist>

@@ -1,0 +1,37 @@
+#ifndef MacaroniAudioDriver_h
+#define MacaroniAudioDriver_h
+
+#include <Availability.h>
+#include <DriverKit/IOService.iig>
+#include <AudioDriverKit/IOUserAudioDriver.iig>
+
+class MacaroniAudioDriver: public IOUserAudioDriver
+{
+public:
+    virtual bool init() override;
+    virtual void free() override;
+
+    virtual kern_return_t Start(IOService* provider) override;
+    virtual kern_return_t Stop(IOService* provider) override;
+
+    virtual kern_return_t NewUserClient(uint32_t type, IOUserClient** userClient) override;
+
+    virtual kern_return_t StartDevice(IOUserAudioObjectID in_object_id,
+                                      IOUserAudioStartStopFlags in_flags) override;
+    virtual kern_return_t StopDevice(IOUserAudioObjectID in_object_id,
+                                     IOUserAudioStartStopFlags in_flags) override;
+
+    virtual kern_return_t PerformDeviceConfigurationChange(IOUserAudioObjectID in_object_id,
+                                                           uint64_t in_change_action,
+                                                           OSObject* in_change_info) override;
+    virtual kern_return_t AbortDeviceConfigurationChange(IOUserAudioObjectID in_object_id,
+                                                         uint64_t in_change_action,
+                                                         OSObject* in_change_info) override;
+
+    virtual kern_return_t HandleChangedStreamFormat(IOUserAudioObjectID in_object_id,
+                                                    IOUserAudioStream* in_stream,
+                                                    const IOUserAudioStreamBasicDescription* in_old_format,
+                                                    const IOUserAudioStreamBasicDescription* in_new_format) override;
+};
+
+#endif /* MacaroniAudioDriver_h */
