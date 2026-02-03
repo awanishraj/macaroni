@@ -71,6 +71,7 @@ final class SolarBrightnessService: NSObject, ObservableObject {
     private var currentLocation: CLLocation?
     private var updateTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
+    private var lastSolarUpdateDate: Date?  // Track when solar times were last calculated
 
     weak var displayManager: DisplayManager?
 
@@ -158,6 +159,9 @@ final class SolarBrightnessService: NSObject, ObservableObject {
             solarNoon = nil
         }
 
+        // Track when we last updated solar times
+        lastSolarUpdateDate = Calendar.current.startOfDay(for: Date())
+
         logger.info("Solar times - Dawn: \(self.formatTime(self.dawn)), Sunrise: \(self.formatTime(self.sunrise)), Noon: \(self.formatTime(self.solarNoon)), Sunset: \(self.formatTime(self.sunset)), Dusk: \(self.formatTime(self.dusk))")
     }
 
@@ -171,6 +175,13 @@ final class SolarBrightnessService: NSObject, ObservableObject {
     private func updateBrightness() {
         guard currentLocation != nil else { return }
         guard Preferences.shared.autoBrightnessEnabled else { return }
+
+        // Refresh solar times if day changed (handles midnight rollover)
+        let today = Calendar.current.startOfDay(for: Date())
+        if lastSolarUpdateDate != today {
+            updateSolarTimes()
+            lastSolarUpdateDate = today
+        }
 
         let (phase, brightness) = calculateBrightness(at: Date())
 

@@ -19,7 +19,6 @@
 		301ACD2D9D271AD5ED70C900 /* DisplayMirrorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1F0CF33071117FF1111A1A1 /* DisplayMirrorService.swift */; };
 		351E8193E6A9804589E25647 /* FanHelperProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACEC5C801E2430E83598DF60 /* FanHelperProtocol.swift */; };
 		3B5D4BC53C7B78D426D6D27A /* CameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27F4CFC73BB2F90FE7B0C5CB /* CameraManager.swift */; };
-		3E0BD1A51A7262B31CAB3B01 /* ResolutionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D2ED96A6530BC747D12494 /* ResolutionService.swift */; };
 		3F60BE797E118BDB44CC6473 /* VirtualDisplayService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D278C98AF8FFB780AFF989FC /* VirtualDisplayService.swift */; };
 		4114FD8EA6647A84F5760D96 /* LaunchAtLogin in Frameworks */ = {isa = PBXBuildFile; productRef = CA7FEF6A3CD0891606783468 /* LaunchAtLogin */; };
 		482717B5519C26F777CE2539 /* SystemExtensionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A55358E40665262FEE8AF7 /* SystemExtensionManager.swift */; };
@@ -54,7 +53,6 @@
 		1177072FF9488DF146502C92 /* MacaroniAudioDriver.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MacaroniAudioDriver.cpp; sourceTree = "<group>"; };
 		149467A703482E725F8D8871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1657A78B8A2763883EBAEDEB /* MacaroniFanHelper */ = {isa = PBXFileReference; includeInIndex = 0; path = MacaroniFanHelper; sourceTree = BUILT_PRODUCTS_DIR; };
-		17D2ED96A6530BC747D12494 /* ResolutionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResolutionService.swift; sourceTree = "<group>"; };
 		1BD32E2A5F45268F3041583F /* FanCurveController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanCurveController.swift; sourceTree = "<group>"; };
 		1E2BCDC61AD6E03DF21C802A /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
 		27F4CFC73BB2F90FE7B0C5CB /* CameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraManager.swift; sourceTree = "<group>"; };
@@ -227,7 +225,6 @@
 				10911AC9BAABAAAA50A39B09 /* DisplayManager.swift */,
 				010C45D0A1DB7FF472D41890 /* DisplayMenuView.swift */,
 				F1F0CF33071117FF1111A1A1 /* DisplayMirrorService.swift */,
-				17D2ED96A6530BC747D12494 /* ResolutionService.swift */,
 				02004176DC51D2F3F898869B /* SolarBrightnessService.swift */,
 				D278C98AF8FFB780AFF989FC /* VirtualDisplayService.swift */,
 			);
@@ -450,7 +447,6 @@
 				F2E2239D2830719B234E0D4D /* MacaroniApp.swift in Sources */,
 				ADF41F2C5832CE6959274F22 /* MainMenuView.swift in Sources */,
 				2DB1148A2996B0A899F0DCC0 /* Preferences.swift in Sources */,
-				3E0BD1A51A7262B31CAB3B01 /* ResolutionService.swift in Sources */,
 				B74E3ACB768AFF9FF5E77222 /* ShortcutManager.swift in Sources */,
 				F716D70C32EF869103292315 /* SliderRow.swift in Sources */,
 				E58B5FE2828B88D0D2ADDDF9 /* SolarBrightnessService.swift in Sources */,

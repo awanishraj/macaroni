@@ -175,7 +175,7 @@ final class Preferences: ObservableObject {
         }
 
         self.crispHiDPIEnabled = defaults.bool(forKey: Keys.crispHiDPIEnabled)
-        self.crispHiDPIResolution = defaults.string(forKey: Keys.crispHiDPIResolution) ?? "res1080p"
+        self.crispHiDPIResolution = defaults.string(forKey: Keys.crispHiDPIResolution) ?? ""
 
         // Audio defaults
         self.selectedAudioDeviceUID = defaults.string(forKey: Keys.selectedAudioDeviceUID)

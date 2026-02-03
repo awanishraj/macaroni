@@ -183,13 +183,13 @@ struct DisplayMenuView: View {
                 // Resolution labels
                 HStack {
                     if let smallest = resolutions.first {
-                        Text("\(smallest.width)x\(smallest.height)")
+                        Text("\(smallest.height)p")
                             .font(.system(size: 9))
                             .foregroundColor(.secondary.opacity(0.6))
                     }
                     Spacer()
                     if let largest = resolutions.last {
-                        Text("\(largest.width)x\(largest.height)")
+                        Text("\(largest.height)p")
                             .font(.system(size: 9))
                             .foregroundColor(.secondary.opacity(0.6))
                     }

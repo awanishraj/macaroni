@@ -22,14 +22,12 @@ struct VirtualResolution: Hashable {
     var sizeInMillimeters: CGSize {
         CGSize(width: 597, height: 336)
     }
-
-    // Common presets for convenience
-    static let res720p = VirtualResolution(logicalWidth: 1280, logicalHeight: 720)
-    static let res900p = VirtualResolution(logicalWidth: 1600, logicalHeight: 900)
-    static let res1080p = VirtualResolution(logicalWidth: 1920, logicalHeight: 1080)
-    static let res1200p = VirtualResolution(logicalWidth: 1920, logicalHeight: 1200)
-    static let res1440p = VirtualResolution(logicalWidth: 2560, logicalHeight: 1440)
 }
+
+/// Maximum virtual display size - large enough to support all HiDPI modes up to 1440p
+/// Using 5120x2880 (5K) which is 2x of 2560x1440
+private let maxVirtualWidth = 5120
+private let maxVirtualHeight = 2880
 
 /// Service to manage virtual display creation for crisp HiDPI scaling
 ///
@@ -63,27 +61,34 @@ final class VirtualDisplayService {
         currentResolution
     }
 
-    /// Create a virtual display with the specified resolution
-    /// - Parameter resolution: The virtual resolution to use
-    /// - Returns: true if creation succeeded
-    @discardableResult
-    func createVirtualDisplay(resolution: VirtualResolution) -> Bool {
-        // Destroy existing virtual display first
-        if isActive {
-            destroyVirtualDisplay()
+    /// Create or reuse virtual display and set it to the specified resolution
+    /// - Parameters:
+    ///   - resolution: The virtual resolution to use
+    ///   - completion: Called when the virtual display is fully ready (HiDPI mode set)
+    func createVirtualDisplay(resolution: VirtualResolution, completion: @escaping (Bool) -> Void) {
+        // If virtual display already exists, just change the mode (no recreation needed)
+        if let existingDisplay = virtualDisplay {
+            logger.info("Reusing existing virtual display, switching to \(resolution.logicalWidth)x\(resolution.logicalHeight)")
+            selectHiDPIMode(for: existingDisplay.displayID, resolution: resolution) { [weak self] success in
+                if success {
+                    self?.currentResolution = resolution
+                }
+                completion(success)
+            }
+            return
         }
 
-        logger.info("Creating virtual display: \(resolution.virtualWidth)x\(resolution.virtualHeight)")
+        // Create new virtual display at max size to support all resolutions
+        logger.info("Creating virtual display at \(maxVirtualWidth)x\(maxVirtualHeight)")
 
-        // Create descriptor
         let descriptor = CGVirtualDisplayDescriptor()
         descriptor.name = "Macaroni Virtual Display"
-        descriptor.vendorID = 0x1234  // Custom vendor ID
-        descriptor.productID = 0x5678  // Custom product ID
+        descriptor.vendorID = 0x1234
+        descriptor.productID = 0x5678
         descriptor.serialNum = 0x0001
-        descriptor.maxPixelsWide = UInt(resolution.virtualWidth)
-        descriptor.maxPixelsHigh = UInt(resolution.virtualHeight)
-        descriptor.sizeInMillimeters = resolution.sizeInMillimeters
+        descriptor.maxPixelsWide = UInt(maxVirtualWidth)
+        descriptor.maxPixelsHigh = UInt(maxVirtualHeight)
+        descriptor.sizeInMillimeters = CGSize(width: 597, height: 336)
 
         // Set color primaries (sRGB)
         descriptor.redPrimary = CGPoint(x: 0.64, y: 0.33)
@@ -91,10 +96,8 @@ final class VirtualDisplayService {
         descriptor.bluePrimary = CGPoint(x: 0.15, y: 0.06)
         descriptor.whitePoint = CGPoint(x: 0.3127, y: 0.3290)
 
-        // Set dispatch queue
         descriptor.queue = DispatchQueue.main
 
-        // Set termination handler
         descriptor.terminationHandler = { [weak self] displayID, error in
             logger.info("Virtual display \(displayID) terminated")
             if let error = error {
@@ -106,98 +109,97 @@ final class VirtualDisplayService {
             }
         }
 
-        // Create virtual display
         guard let display = CGVirtualDisplay(descriptor: descriptor) else {
             logger.error("Failed to create CGVirtualDisplay")
-            return false
+            completion(false)
+            return
         }
 
         logger.info("Virtual display created with ID: \(display.displayID)")
 
-        // Configure settings with HiDPI modes
+        // Configure settings with all supported HiDPI modes
         let settings = CGVirtualDisplaySettings()
-        settings.hiDPI = 1  // Enable HiDPI
+        settings.hiDPI = 1
 
-        // Create display modes
-        // Include both the virtual resolution and logical resolution
-        let virtualMode = CGVirtualDisplayMode(
-            width: UInt(resolution.virtualWidth),
-            height: UInt(resolution.virtualHeight),
-            refreshRate: 60.0
-        )
+        // Add all supported modes (16:9 resolutions)
+        let supportedModes: [(Int, Int)] = [
+            (1024, 576),   // 576p
+            (1152, 648),   // 648p
+            (1280, 720),   // 720p
+            (1366, 768),   // 768p
+            (1600, 900),   // 900p
+            (1792, 1008),  // 1008p
+            (1920, 1080),  // 1080p
+            (2048, 1152),  // 1152p
+            (2560, 1440),  // 1440p
+        ]
 
-        let logicalMode = CGVirtualDisplayMode(
-            width: UInt(resolution.logicalWidth),
-            height: UInt(resolution.logicalHeight),
-            refreshRate: 60.0
-        )
+        var modes: [CGVirtualDisplayMode] = []
+        for (w, h) in supportedModes {
+            let mode = CGVirtualDisplayMode(width: UInt(w), height: UInt(h), refreshRate: 60.0)
+            modes.append(mode)
+        }
+        // Also add the max pixel resolution mode
+        modes.append(CGVirtualDisplayMode(width: UInt(maxVirtualWidth), height: UInt(maxVirtualHeight), refreshRate: 60.0))
 
-        settings.modes = [virtualMode, logicalMode]
+        settings.modes = modes
 
-        // Apply settings
         guard display.apply(settings) else {
             logger.error("Failed to apply settings to virtual display")
-            return false
-        }
-
-        logger.info("Virtual display configured, now selecting HiDPI mode...")
-
-        virtualDisplay = display
-        currentResolution = resolution
-
-        // Explicitly set the virtual display to the HiDPI mode
-        // This ensures macOS uses the logical resolution, not the full pixel resolution
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            self.selectHiDPIMode(for: display.displayID, resolution: resolution)
-        }
-
-        return true
-    }
-
-    /// Explicitly select the HiDPI mode for the virtual display
-    private func selectHiDPIMode(for displayID: CGDirectDisplayID, resolution: VirtualResolution) {
-        // Get all available modes for this display
-        let options: CFDictionary = [kCGDisplayShowDuplicateLowResolutionModes: kCFBooleanTrue] as CFDictionary
-        guard let modesArray = CGDisplayCopyAllDisplayModes(displayID, options) as? [CGDisplayMode] else {
-            logger.error("Failed to get display modes for virtual display")
+            completion(false)
             return
         }
 
-        logger.info("Virtual display has \(modesArray.count) modes available")
+        virtualDisplay = display
 
-        // Find the HiDPI mode matching our logical resolution
-        // HiDPI mode: logical width/height match our target, pixel width/height are 2x
+        // Select the requested HiDPI mode after a brief delay for display to initialize
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.selectHiDPIMode(for: display.displayID, resolution: resolution) { success in
+                if success {
+                    self?.currentResolution = resolution
+                }
+                completion(success)
+            }
+        }
+    }
+
+    /// Explicitly select the HiDPI mode for the virtual display
+    /// - Returns: true via completion if mode was set successfully
+    private func selectHiDPIMode(for displayID: CGDirectDisplayID, resolution: VirtualResolution, completion: @escaping (Bool) -> Void) {
+        let options: CFDictionary = [kCGDisplayShowDuplicateLowResolutionModes: kCFBooleanTrue] as CFDictionary
+        guard let modesArray = CGDisplayCopyAllDisplayModes(displayID, options) as? [CGDisplayMode] else {
+            logger.error("Failed to get display modes for virtual display")
+            completion(false)
+            return
+        }
+
+        logger.info("Looking for \(resolution.logicalWidth)x\(resolution.logicalHeight) HiDPI mode")
+
+        // Find HiDPI mode matching our logical resolution
         let targetMode = modesArray.first { mode in
             mode.width == resolution.logicalWidth &&
             mode.height == resolution.logicalHeight &&
-            mode.pixelWidth == resolution.virtualWidth &&
-            mode.pixelHeight == resolution.virtualHeight
+            mode.pixelWidth > mode.width  // HiDPI indicator
         }
 
         if let mode = targetMode {
-            logger.info("Found HiDPI mode: \(mode.width)x\(mode.height) (pixels: \(mode.pixelWidth)x\(mode.pixelHeight))")
+            logger.info("Found mode: \(mode.width)x\(mode.height) @\(mode.pixelWidth)x\(mode.pixelHeight)")
 
-            var config: CGDisplayConfigRef?
-            guard CGBeginDisplayConfiguration(&config) == .success, let cfg = config else {
-                logger.error("Failed to begin display configuration")
-                return
+            let result = CGDisplaySetDisplayMode(displayID, mode, nil)
+            if result == .success {
+                logger.info("Mode switch complete")
+                completion(true)
+            } else {
+                logger.error("CGDisplaySetDisplayMode failed: \(result.rawValue)")
+                completion(false)
             }
-
-            CGConfigureDisplayWithDisplayMode(cfg, displayID, mode, nil)
-
-            guard CGCompleteDisplayConfiguration(cfg, .permanently) == .success else {
-                logger.error("Failed to set virtual display mode")
-                CGCancelDisplayConfiguration(cfg)
-                return
-            }
-
-            logger.info("Successfully set virtual display to HiDPI mode: \(resolution.logicalWidth)x\(resolution.logicalHeight)")
         } else {
-            // Log available modes for debugging
-            logger.warning("Could not find exact HiDPI mode for \(resolution.logicalWidth)x\(resolution.logicalHeight)")
-            for mode in modesArray.prefix(10) {
-                logger.debug("Available mode: \(mode.width)x\(mode.height) pixels:\(mode.pixelWidth)x\(mode.pixelHeight)")
+            logger.warning("Could not find HiDPI mode for \(resolution.logicalWidth)x\(resolution.logicalHeight)")
+            let hidpiModes = modesArray.filter { $0.pixelWidth > $0.width }
+            for mode in hidpiModes.prefix(10) {
+                logger.debug("Available: \(mode.width)x\(mode.height) @\(mode.pixelWidth)x\(mode.pixelHeight)")
             }
+            completion(false)
         }
     }
 
@@ -218,10 +220,7 @@ final class VirtualDisplayService {
     }
 
     /// Check if CGVirtualDisplay APIs are available
-    /// Returns false on older macOS versions or if APIs are unavailable
     func isSupported() -> Bool {
-        // Try to create a descriptor to test API availability
-        let descriptor = CGVirtualDisplayDescriptor()
-        return descriptor.name != nil || true  // If we can create descriptor, API exists
+        return true
     }
 }

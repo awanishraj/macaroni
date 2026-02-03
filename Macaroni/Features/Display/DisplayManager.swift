@@ -108,9 +108,49 @@ final class DisplayManager: ObservableObject {
 
     init() {
         refreshDisplays()
+        restoreSelectedDisplay()
         setupDisplayNotifications()
         startBrightnessMonitoring()
         setupShortcutHandlers()
+        restoreCrispHiDPIState()
+    }
+
+    /// Restore previously selected display from preferences
+    private func restoreSelectedDisplay() {
+        if let savedDisplayID = Preferences.shared.selectedDisplayID,
+           let savedDisplay = displays.first(where: { $0.id == savedDisplayID }) {
+            selectedDisplay = savedDisplay
+            if let currentBrightness = savedDisplay.currentBrightness {
+                isUpdatingFromExternal = true
+                brightness = Double(currentBrightness) / 100.0
+                isUpdatingFromExternal = false
+            }
+        }
+    }
+
+    /// Restore crisp HiDPI state from preferences
+    private func restoreCrispHiDPIState() {
+        guard Preferences.shared.crispHiDPIEnabled else { return }
+        guard let display = selectedDisplay, !display.isBuiltIn else { return }
+
+        // Parse saved resolution (format: "WIDTHxHEIGHT")
+        let savedResolution = Preferences.shared.crispHiDPIResolution
+        let components = savedResolution.replacingOccurrences(of: "VirtualResolution(logicalWidth: ", with: "")
+            .replacingOccurrences(of: ", logicalHeight: ", with: "x")
+            .replacingOccurrences(of: ")", with: "")
+            .split(separator: "x")
+
+        if components.count == 2,
+           let width = Int(components[0]),
+           let height = Int(components[1]) {
+            let resolution = VirtualResolution(logicalWidth: width, logicalHeight: height)
+            logger.info("Restoring crisp HiDPI with \(resolution.displayName)")
+
+            // Delay to allow display system to settle after app launch
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.enableCrispHiDPI(resolution: resolution)
+            }
+        }
     }
 
     deinit {
@@ -240,15 +280,18 @@ final class DisplayManager: ObservableObject {
 
         logger.info("Enabling crisp HiDPI with \(resolution.displayName) for display \(display.name)")
 
-        // Create virtual display
-        guard virtualDisplayService.createVirtualDisplay(resolution: resolution) else {
-            logger.error("Failed to create virtual display")
-            return false
-        }
+        // Check if mirroring is already active for this display pair
+        // If so, we only need to change the virtual display mode, not restart mirroring
+        let needsMirroring = !mirrorService.isActive || mirrorService.destination != display.id
 
-        // Wait a moment for the virtual display to be recognized by the system
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+        // Create virtual display with completion handler
+        virtualDisplayService.createVirtualDisplay(resolution: resolution) { [weak self] success in
             guard let self = self else { return }
+
+            guard success else {
+                logger.error("Failed to create virtual display")
+                return
+            }
 
             guard let virtualID = self.virtualDisplayService.displayID else {
                 logger.error("Virtual display created but ID not available")
@@ -256,17 +299,18 @@ final class DisplayManager: ObservableObject {
                 return
             }
 
-            // Start mirroring: physical display mirrors virtual display
-            guard self.mirrorService.startMirroring(source: virtualID, destination: display.id) else {
-                logger.error("Failed to start mirroring")
-                self.virtualDisplayService.destroyVirtualDisplay()
-                return
+            // Only start mirroring if not already mirroring to this display
+            if needsMirroring {
+                guard self.mirrorService.startMirroring(source: virtualID, destination: display.id) else {
+                    logger.error("Failed to start mirroring")
+                    self.virtualDisplayService.destroyVirtualDisplay()
+                    return
+                }
             }
 
             logger.info("Crisp HiDPI enabled successfully")
             self.crispHiDPIActive = true
 
-            // Save preference
             Preferences.shared.crispHiDPIEnabled = true
             Preferences.shared.crispHiDPIResolution = String(describing: resolution)
         }
@@ -307,28 +351,6 @@ final class DisplayManager: ObservableObject {
     /// Get the current virtual resolution if crisp HiDPI is active
     var currentVirtualResolution: VirtualResolution? {
         virtualDisplayService.resolution
-    }
-
-    /// Restore crisp HiDPI state from preferences (called on app launch)
-    func restoreCrispHiDPIState() {
-        guard Preferences.shared.crispHiDPIEnabled else { return }
-
-        // Parse saved resolution
-        let savedResolution = Preferences.shared.crispHiDPIResolution
-        let resolution: VirtualResolution
-        switch savedResolution {
-        case "res1200p":
-            resolution = .res1200p
-        case "res1440p":
-            resolution = .res1440p
-        default:
-            resolution = .res1080p
-        }
-
-        // Delay restoration to ensure displays are enumerated
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.enableCrispHiDPI(resolution: resolution)
-        }
     }
 
     // MARK: - Shortcut Handlers
@@ -508,6 +530,9 @@ final class DisplayManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
+            // Clear DDC caches when display configuration changes
+            // This handles display connect/disconnect
+            self?.ddcService.clearCaches()
             self?.refreshDisplays()
         }
     }
