@@ -116,30 +116,45 @@ struct AudioMenuView: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.primary)
 
-            // Device picker - use menu style to avoid overflow with long names
-            Picker("Output Device", selection: Binding(
-                get: { audioManager.selectedDevice?.id ?? "" },
-                set: { id in
-                    if let device = audioManager.outputDevices.first(where: { $0.id == id }) {
-                        audioManager.selectDevice(device)
-                    }
-                }
-            )) {
+            // Device picker as Menu for full-width control
+            Menu {
                 ForEach(audioManager.outputDevices) { device in
-                    HStack {
-                        Text(device.name)
-                        if device.supportsVolumeControl {
-                            Spacer()
-                            Image(systemName: "speaker.wave.2")
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
+                    Button {
+                        audioManager.selectDevice(device)
+                    } label: {
+                        HStack {
+                            Text(device.name)
+                            if device.supportsVolumeControl {
+                                Image(systemName: "speaker.wave.2")
+                            }
+                            if device.id == audioManager.selectedDevice?.id {
+                                Image(systemName: "checkmark")
+                            }
                         }
                     }
-                    .tag(device.id)
                 }
+            } label: {
+                HStack {
+                    if let device = audioManager.selectedDevice {
+                        if device.supportsVolumeControl {
+                            Image(systemName: "speaker.wave.2")
+                                .font(.system(size: 11))
+                        }
+                        Text(device.name)
+                    } else {
+                        Text("Select Device")
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.primary.opacity(0.1))
+                .cornerRadius(6)
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
+            .buttonStyle(.plain)
         }
     }
 
