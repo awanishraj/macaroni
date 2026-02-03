@@ -2,11 +2,34 @@ import SwiftUI
 
 struct AudioMenuView: View {
     @EnvironmentObject var audioManager: AudioManager
+    @State private var isInstallingProxy = false
+    @State private var proxyInstallError: String?
+    @State private var showInstallSuccess = false
+
+    /// Show install prompt if device lacks volume control and proxy not installed
+    private var shouldShowProxyInstall: Bool {
+        !supportsVolumeControl && !AudioProxyInstaller.shared.isInstalled
+    }
+
+    /// Show hint to select Macaroni Audio after successful install
+    private var shouldShowProxyHint: Bool {
+        !supportsVolumeControl && AudioProxyInstaller.shared.isInstalled
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Volume Control
             volumeSection
+
+            // Proxy install prompt (if device lacks volume control and proxy not installed)
+            if shouldShowProxyInstall {
+                proxyInstallSection
+            }
+
+            // Hint to select Macaroni Audio (if proxy installed but not selected)
+            if shouldShowProxyHint {
+                proxyHintSection
+            }
 
             // Output Device (if multiple devices)
             if audioManager.outputDevices.count > 1 {
@@ -117,6 +140,131 @@ struct AudioMenuView: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
+        }
+    }
+
+    // MARK: - Proxy Install Section
+
+    private var proxyInstallSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 4) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                    .font(.system(size: 11))
+                Text("This device doesn't support software volume")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            HStack {
+                Button {
+                    installProxy()
+                } label: {
+                    if isInstallingProxy {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(width: 12, height: 12)
+                        Text("Installing...")
+                    } else {
+                        Image(systemName: "speaker.wave.2.circle")
+                        Text("Enable Software Volume")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(isInstallingProxy)
+
+                Spacer()
+            }
+
+            if let error = proxyInstallError {
+                Text(error)
+                    .font(.system(size: 10))
+                    .foregroundColor(.red)
+            }
+        }
+        .padding(8)
+        .background(Color.orange.opacity(0.1))
+        .cornerRadius(6)
+    }
+
+    // MARK: - Proxy Hint Section
+
+    private var proxyHintSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 4) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundColor(.blue)
+                    .font(.system(size: 11))
+                Text("Select \"Macaroni Audio\" below to enable volume control")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            HStack {
+                Button {
+                    reinstallProxy()
+                } label: {
+                    if isInstallingProxy {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(width: 12, height: 12)
+                        Text("Reinstalling...")
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Reinstall Driver")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(isInstallingProxy)
+
+                Spacer()
+            }
+
+            if let error = proxyInstallError {
+                Text(error)
+                    .font(.system(size: 10))
+                    .foregroundColor(.red)
+            }
+        }
+        .padding(8)
+        .background(Color.blue.opacity(0.1))
+        .cornerRadius(6)
+    }
+
+    private func installProxy() {
+        isInstallingProxy = true
+        proxyInstallError = nil
+
+        AudioProxyInstaller.shared.install { success, error in
+            isInstallingProxy = false
+
+            if success {
+                // Refresh devices after coreaudiod restart
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    audioManager.refreshDevices()
+                }
+            } else if let error = error {
+                proxyInstallError = error
+            }
+        }
+    }
+
+    private func reinstallProxy() {
+        isInstallingProxy = true
+        proxyInstallError = nil
+
+        AudioProxyInstaller.shared.install { success, error in
+            isInstallingProxy = false
+
+            if success {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    audioManager.refreshDevices()
+                }
+            } else if let error = error {
+                proxyInstallError = error
+            }
         }
     }
 }

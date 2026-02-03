@@ -27,6 +27,7 @@ struct AudioDevice: Identifiable, Hashable {
 final class AudioManager: ObservableObject {
     @Published private(set) var outputDevices: [AudioDevice] = []
     @Published private(set) var selectedDevice: AudioDevice?
+
     @Published var volume: Float = 0.5 {
         didSet {
             if !isUpdatingFromExternal {
@@ -45,18 +46,11 @@ final class AudioManager: ObservableObject {
     private let simplyCA = SimplyCoreAudio()
     private var cancellables = Set<AnyCancellable>()
     private var isUpdatingFromExternal = false
-    private var volumeObserver: Any?
 
     init() {
         setupDevices()
         setupNotifications()
         setupShortcutHandlers()
-    }
-
-    deinit {
-        if let observer = volumeObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
     }
 
     // MARK: - Public API
@@ -227,8 +221,23 @@ final class AudioManager: ObservableObject {
             self?.handleDefaultDeviceChange()
         }
 
-        // Start volume monitoring
-        startVolumeMonitoring()
+        // Volume changes (event-based, no polling needed)
+        NotificationCenter.default.addObserver(
+            forName: .deviceVolumeDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.updateVolumeFromDevice()
+        }
+
+        // Mute state changes
+        NotificationCenter.default.addObserver(
+            forName: .deviceMuteDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.updateVolumeFromDevice()
+        }
     }
 
     private func handleDefaultDeviceChange() {
@@ -240,13 +249,6 @@ final class AudioManager: ObservableObject {
         if let device = outputDevices.first(where: { $0.id == uid }) {
             selectedDevice = device
             updateVolumeFromDevice()
-        }
-    }
-
-    private func startVolumeMonitoring() {
-        // Poll volume periodically for external changes
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.updateVolumeFromDevice()
         }
     }
 
