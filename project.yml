@@ -44,6 +44,7 @@ targets:
         CODE_SIGN_STYLE: Automatic
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_ENTITLEMENTS: Macaroni/Macaroni.entitlements
+        SWIFT_OBJC_BRIDGING_HEADER: Macaroni/Macaroni-Bridging-Header.h
         FRAMEWORK_SEARCH_PATHS:
           - "$(inherited)"
           - "/System/Library/PrivateFrameworks"

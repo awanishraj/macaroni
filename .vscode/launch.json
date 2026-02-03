@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:macaroni}",
+            "name": "Debug Macaroni",
+            "target": "Macaroni",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Macaroni"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:macaroni}",
+            "name": "Release Macaroni",
+            "target": "Macaroni",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Macaroni"
+        }
+    ]
+}

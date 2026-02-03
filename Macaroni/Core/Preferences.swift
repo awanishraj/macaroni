@@ -88,6 +88,14 @@ final class Preferences: ObservableObject {
         }
     }
 
+    @Published var crispHiDPIEnabled: Bool {
+        didSet { defaults.set(crispHiDPIEnabled, forKey: Keys.crispHiDPIEnabled) }
+    }
+
+    @Published var crispHiDPIResolution: String {
+        didSet { defaults.set(crispHiDPIResolution, forKey: Keys.crispHiDPIResolution) }
+    }
+
     // MARK: - Audio Preferences
 
     @Published var selectedAudioDeviceUID: String? {
@@ -139,6 +147,8 @@ final class Preferences: ObservableObject {
         static let dayBrightness = "dayBrightness"
         static let nightBrightness = "nightBrightness"
         static let selectedDisplayID = "selectedDisplayID"
+        static let crispHiDPIEnabled = "crispHiDPIEnabled"
+        static let crispHiDPIResolution = "crispHiDPIResolution"
         static let selectedAudioDeviceUID = "selectedAudioDeviceUID"
         static let cameraRotation = "cameraRotation"
         static let horizontalFlip = "horizontalFlip"
@@ -163,6 +173,9 @@ final class Preferences: ObservableObject {
         } else {
             self.selectedDisplayID = nil
         }
+
+        self.crispHiDPIEnabled = defaults.bool(forKey: Keys.crispHiDPIEnabled)
+        self.crispHiDPIResolution = defaults.string(forKey: Keys.crispHiDPIResolution) ?? "res1080p"
 
         // Audio defaults
         self.selectedAudioDeviceUID = defaults.string(forKey: Keys.selectedAudioDeviceUID)

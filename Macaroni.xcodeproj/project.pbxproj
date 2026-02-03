@@ -16,9 +16,11 @@
 		24104E053CB9081FEC639C08 /* FrameProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C19120DF198E721F7281A9DF /* FrameProcessor.swift */; };
 		2A3E161CA1C58D298D46C652 /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B1F4401D44DBD1EB0117877 /* AudioManager.swift */; };
 		2DB1148A2996B0A899F0DCC0 /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E53E5B09417F775CC34E91E /* Preferences.swift */; };
+		301ACD2D9D271AD5ED70C900 /* DisplayMirrorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1F0CF33071117FF1111A1A1 /* DisplayMirrorService.swift */; };
 		351E8193E6A9804589E25647 /* FanHelperProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACEC5C801E2430E83598DF60 /* FanHelperProtocol.swift */; };
 		3B5D4BC53C7B78D426D6D27A /* CameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27F4CFC73BB2F90FE7B0C5CB /* CameraManager.swift */; };
 		3E0BD1A51A7262B31CAB3B01 /* ResolutionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D2ED96A6530BC747D12494 /* ResolutionService.swift */; };
+		3F60BE797E118BDB44CC6473 /* VirtualDisplayService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D278C98AF8FFB780AFF989FC /* VirtualDisplayService.swift */; };
 		4114FD8EA6647A84F5760D96 /* LaunchAtLogin in Frameworks */ = {isa = PBXBuildFile; productRef = CA7FEF6A3CD0891606783468 /* LaunchAtLogin */; };
 		482717B5519C26F777CE2539 /* SystemExtensionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A55358E40665262FEE8AF7 /* SystemExtensionManager.swift */; };
 		57BB5F2D4ED646603B1CD827 /* DisplayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10911AC9BAABAAAA50A39B09 /* DisplayManager.swift */; };
@@ -57,7 +59,9 @@
 		1E2BCDC61AD6E03DF21C802A /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
 		27F4CFC73BB2F90FE7B0C5CB /* CameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraManager.swift; sourceTree = "<group>"; };
 		2F699CAB86C96F2417277A79 /* Macaroni.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Macaroni.entitlements; sourceTree = "<group>"; };
+		3896E5A08BD3E1C760B77043 /* Macaroni-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Macaroni-Bridging-Header.h"; sourceTree = "<group>"; };
 		3E53E5B09417F775CC34E91E /* Preferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Preferences.swift; sourceTree = "<group>"; };
+		4181249F663944E6781D0D1A /* CGVirtualDisplay.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CGVirtualDisplay.h; sourceTree = "<group>"; };
 		43B0E049632183783CE2B897 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		46706974947C289C36D53621 /* FanHelperInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanHelperInstaller.swift; sourceTree = "<group>"; };
 		48BD2D841F3F29C2BC39D314 /* MacaroniCameraExtension.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; path = MacaroniCameraExtension.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -80,8 +84,10 @@
 		B9309AE507B5183B32CE0116 /* MacaroniAudioDriver.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = MacaroniAudioDriver.iig; sourceTree = "<group>"; };
 		C19120DF198E721F7281A9DF /* FrameProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameProcessor.swift; sourceTree = "<group>"; };
 		C901AE358AB08CC3F04B464A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D278C98AF8FFB780AFF989FC /* VirtualDisplayService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualDisplayService.swift; sourceTree = "<group>"; };
 		D2847F4A564565097F019BDC /* SMCWriteService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCWriteService.swift; sourceTree = "<group>"; };
 		D2F96AB81ACF9C286BDC6134 /* FanMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanMenuView.swift; sourceTree = "<group>"; };
+		F1F0CF33071117FF1111A1A1 /* DisplayMirrorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMirrorService.swift; sourceTree = "<group>"; };
 		F3FCE87B2C2A8866001ACDC7 /* CameraPreviewPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewPopover.swift; sourceTree = "<group>"; };
 		FDE16D6D9411793AB3DF9FDA /* ThermalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalService.swift; sourceTree = "<group>"; };
 		FFE5103C6B4CB9A7AE56A77B /* DDCService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DDCService.swift; sourceTree = "<group>"; };
@@ -205,14 +211,25 @@
 			path = Audio;
 			sourceTree = "<group>";
 		};
+		8B5A542D6B34C2D69DA75DEE /* PrivateAPIs */ = {
+			isa = PBXGroup;
+			children = (
+				4181249F663944E6781D0D1A /* CGVirtualDisplay.h */,
+			);
+			path = PrivateAPIs;
+			sourceTree = "<group>";
+		};
 		A0B5C20F8C37BC98BFF738D7 /* Display */ = {
 			isa = PBXGroup;
 			children = (
+				8B5A542D6B34C2D69DA75DEE /* PrivateAPIs */,
 				FFE5103C6B4CB9A7AE56A77B /* DDCService.swift */,
 				10911AC9BAABAAAA50A39B09 /* DisplayManager.swift */,
 				010C45D0A1DB7FF472D41890 /* DisplayMenuView.swift */,
+				F1F0CF33071117FF1111A1A1 /* DisplayMirrorService.swift */,
 				17D2ED96A6530BC747D12494 /* ResolutionService.swift */,
 				02004176DC51D2F3F898869B /* SolarBrightnessService.swift */,
+				D278C98AF8FFB780AFF989FC /* VirtualDisplayService.swift */,
 			);
 			path = Display;
 			sourceTree = "<group>";
@@ -252,6 +269,7 @@
 				7C9BDA83DC815F3A3918C731 /* Core */,
 				49D1D374F7AD196AFD7E17BD /* Features */,
 				B337CD77BCF91AB8D36B0788 /* UI */,
+				3896E5A08BD3E1C760B77043 /* Macaroni-Bridging-Header.h */,
 				2F699CAB86C96F2417277A79 /* Macaroni.entitlements */,
 			);
 			path = Macaroni;
@@ -424,6 +442,7 @@
 				8B0146B289435FDF2ADFCC6A /* DDCService.swift in Sources */,
 				57BB5F2D4ED646603B1CD827 /* DisplayManager.swift in Sources */,
 				D406777071C133FF0EB22C33 /* DisplayMenuView.swift in Sources */,
+				301ACD2D9D271AD5ED70C900 /* DisplayMirrorService.swift in Sources */,
 				E82BE10243D5E119553EB934 /* FanCurveController.swift in Sources */,
 				EBF4FF271749E3368C26284A /* FanHelperInstaller.swift in Sources */,
 				5FCB08B5AAE1FF9631BD6E77 /* FanMenuView.swift in Sources */,
@@ -438,6 +457,7 @@
 				482717B5519C26F777CE2539 /* SystemExtensionManager.swift in Sources */,
 				144F61AF5910D025701314DF /* ThermalService.swift in Sources */,
 				03A42CAE370618769CCFDD13 /* ToggleRow.swift in Sources */,
+				3F60BE797E118BDB44CC6473 /* VirtualDisplayService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -547,7 +567,8 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.macaroni.app;
 				SDKROOT = macosx;
-							};
+				SWIFT_OBJC_BRIDGING_HEADER = "Macaroni/Macaroni-Bridging-Header.h";
+			};
 			name = Release;
 		};
 		7060470FCFC32205E2B60894 /* Debug */ = {
@@ -594,7 +615,8 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.macaroni.app;
 				SDKROOT = macosx;
-							};
+				SWIFT_OBJC_BRIDGING_HEADER = "Macaroni/Macaroni-Bridging-Header.h";
+			};
 			name = Debug;
 		};
 		9A1461EAEAAD11235B0822B4 /* Release */ = {

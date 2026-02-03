@@ -25,14 +25,20 @@ The goal is to replace multiple single-purpose utilities with one cohesive, nati
 | Resolution switching | ✅ Complete | Shows HiDPI + native modes only |
 | HiDPI labels | ✅ Complete | Shows HiDPI/Native/Scaled indicators |
 | Keyboard shortcuts | ✅ Complete | Brightness up/down configurable |
-| **Crisp HiDPI scaling** | ❌ Blocked | Requires CGVirtualDisplay private API |
+| **Crisp HiDPI scaling** | ⚠️ Implemented | Via CGVirtualDisplay API, needs testing |
 
-**Roadblock:** True crisp 1080p on a 2560x1440 display requires creating virtual displays with the undocumented `CGVirtualDisplay` API (used by BetterDisplay, Sidecar, AirPlay). This involves:
-- Creating a virtual display at 3840x2160
-- Mirroring it to the physical 2560x1440 display
-- macOS handles the downscaling (crisp supersampling)
+**Crisp HiDPI Scaling:** Implemented using the private `CGVirtualDisplay` API to create virtual displays for crisp text rendering on external monitors. Features:
+- Creates virtual display at 2x resolution (e.g., 3840x2160 for 1080p HiDPI)
+- Mirrors virtual display to physical display
+- macOS performs supersampling for crisp text
+- Supports 1080p, 1200p, and 1440p HiDPI modes
+- Limitations: 60Hz max, no HDR/HDCP support
 
-Research completed; implementation requires adding Objective-C bridging header and special entitlements.
+Files added:
+- `CGVirtualDisplay.h` - Private API declarations
+- `VirtualDisplayService.swift` - Virtual display lifecycle
+- `DisplayMirrorService.swift` - Display mirroring control
+- Updated `DisplayMenuView.swift` with UI controls
 
 ---
 
@@ -125,14 +131,14 @@ Macaroni.app
 2. **Keyboard shortcuts window** - Currently just a placeholder button
 3. **Display device selection** - Works but UI could be cleaner
 4. **Frame overlays** - Code ready but no bundled PNG frames
-5. **HiDPI virtual display** - Research done, implementation deferred
+5. **HiDPI virtual display** - Implemented, needs real-world testing on 1440p monitors
 
 ---
 
 ## Next Steps (Priority Order)
 
 1. **Virtual Camera** - Get CMIOExtension working for video call apps
-2. **HiDPI Scaling** - Implement CGVirtualDisplay for crisp external display scaling
+2. **Test HiDPI Scaling** - Verify CGVirtualDisplay works on actual 1440p external monitors
 3. **Keyboard Shortcuts Window** - Proper settings window for configuring hotkeys
 4. **Frame Overlays** - Bundle artistic frames for camera preview
 5. **Polish & Release** - DMG packaging, notarization, GitHub release

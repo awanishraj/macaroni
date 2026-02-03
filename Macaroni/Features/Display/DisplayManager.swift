@@ -63,11 +63,20 @@ struct Display: Identifiable {
     var displayID: CGDirectDisplayID { id }
 }
 
+/// Represents a resolution option that can be either native or achieved via virtual display
+struct ResolutionOption {
+    let width: Int
+    let height: Int
+    let isVirtual: Bool  // true = requires virtual display, false = native mode available
+    let nativeMode: DisplayMode?
+}
+
 /// Manages display enumeration, brightness, and resolution
 final class DisplayManager: ObservableObject {
     @Published private(set) var displays: [Display] = []
     @Published private(set) var selectedDisplay: Display?
     @Published private(set) var displayRefreshToken: UUID = UUID()  // Changes when displays are refreshed
+    @Published private(set) var crispHiDPIActive = false
     @Published var brightness: Double = 1.0 {
         didSet {
             if !isUpdatingFromExternal {
@@ -83,6 +92,8 @@ final class DisplayManager: ObservableObject {
     }
 
     private let ddcService = DDCService.shared
+    private let virtualDisplayService = VirtualDisplayService.shared
+    private let mirrorService = DisplayMirrorService.shared
     private var displayRefreshTimer: Timer?
     private var isUpdatingFromExternal = false
     private var isUpdatingFromAutoBrightness = false
@@ -104,6 +115,11 @@ final class DisplayManager: ObservableObject {
 
     deinit {
         displayRefreshTimer?.invalidate()
+        // Clean up virtual display on app quit
+        if crispHiDPIActive {
+            mirrorService.stopMirroring()
+            virtualDisplayService.destroyVirtualDisplay()
+        }
     }
 
     // MARK: - Public API
@@ -173,14 +189,146 @@ final class DisplayManager: ObservableObject {
         CGConfigureDisplayWithDisplayMode(config.pointee, display.id, mode.mode, nil)
 
         CGCompleteDisplayConfiguration(config.pointee, .permanently)
+    }
 
-        // Don't refresh immediately - the system notification (didChangeScreenParametersNotification)
-        // will trigger refreshDisplays() when the resolution actually changes (~1 second later)
-        // This ensures we get the correct current mode after the change completes
+    /// Set resolution using a ResolutionOption (handles both native and virtual resolutions)
+    func setResolutionOption(_ option: ResolutionOption, for display: Display) {
+        if option.isVirtual {
+            // Virtual resolution - create virtual display + mirror for crisp HiDPI
+            logger.info("Setting virtual resolution: \(option.width)x\(option.height)")
+
+            let virtualRes = VirtualResolution(logicalWidth: option.width, logicalHeight: option.height)
+
+            // Select this display and enable virtual display
+            selectedDisplay = display
+            enableCrispHiDPI(resolution: virtualRes)
+        } else {
+            // Native resolution - use native mode, disable virtual display if active
+            logger.info("Setting native resolution: \(option.width)x\(option.height)")
+
+            // Disable virtual display first if active
+            if crispHiDPIActive {
+                disableCrispHiDPI()
+                // Wait for virtual display to be disabled before setting native mode
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    if let mode = option.nativeMode {
+                        self?.setResolution(mode)
+                    }
+                }
+            } else if let mode = option.nativeMode {
+                setResolution(mode)
+            }
+        }
     }
 
     func getHiDPIModes(for display: Display) -> [DisplayMode] {
         return display.availableModes.filter { $0.isHiDPI }
+    }
+
+    // MARK: - Crisp HiDPI Scaling
+
+    /// Enable crisp HiDPI mode for the selected external display
+    /// Creates a virtual display at higher resolution and mirrors it to the physical display
+    /// - Parameter resolution: The virtual resolution to use
+    /// - Returns: true if successfully enabled
+    @discardableResult
+    func enableCrispHiDPI(resolution: VirtualResolution) -> Bool {
+        guard let display = selectedDisplay, !display.isBuiltIn else {
+            logger.warning("Crisp HiDPI requires an external display")
+            return false
+        }
+
+        logger.info("Enabling crisp HiDPI with \(resolution.displayName) for display \(display.name)")
+
+        // Create virtual display
+        guard virtualDisplayService.createVirtualDisplay(resolution: resolution) else {
+            logger.error("Failed to create virtual display")
+            return false
+        }
+
+        // Wait a moment for the virtual display to be recognized by the system
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self else { return }
+
+            guard let virtualID = self.virtualDisplayService.displayID else {
+                logger.error("Virtual display created but ID not available")
+                self.virtualDisplayService.destroyVirtualDisplay()
+                return
+            }
+
+            // Start mirroring: physical display mirrors virtual display
+            guard self.mirrorService.startMirroring(source: virtualID, destination: display.id) else {
+                logger.error("Failed to start mirroring")
+                self.virtualDisplayService.destroyVirtualDisplay()
+                return
+            }
+
+            logger.info("Crisp HiDPI enabled successfully")
+            self.crispHiDPIActive = true
+
+            // Save preference
+            Preferences.shared.crispHiDPIEnabled = true
+            Preferences.shared.crispHiDPIResolution = String(describing: resolution)
+        }
+
+        return true
+    }
+
+    /// Disable crisp HiDPI mode and restore normal display operation
+    func disableCrispHiDPI() {
+        logger.info("Disabling crisp HiDPI")
+
+        // Stop mirroring first
+        mirrorService.stopMirroring()
+
+        // Wait a moment before destroying virtual display
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self = self else { return }
+
+            // Destroy virtual display
+            self.virtualDisplayService.destroyVirtualDisplay()
+
+            logger.info("Crisp HiDPI disabled")
+            self.crispHiDPIActive = false
+
+            // Save preference
+            Preferences.shared.crispHiDPIEnabled = false
+
+            // Refresh displays to update state
+            self.refreshDisplays()
+        }
+    }
+
+    /// Check if crisp HiDPI is supported
+    var isCrispHiDPISupported: Bool {
+        virtualDisplayService.isSupported()
+    }
+
+    /// Get the current virtual resolution if crisp HiDPI is active
+    var currentVirtualResolution: VirtualResolution? {
+        virtualDisplayService.resolution
+    }
+
+    /// Restore crisp HiDPI state from preferences (called on app launch)
+    func restoreCrispHiDPIState() {
+        guard Preferences.shared.crispHiDPIEnabled else { return }
+
+        // Parse saved resolution
+        let savedResolution = Preferences.shared.crispHiDPIResolution
+        let resolution: VirtualResolution
+        switch savedResolution {
+        case "res1200p":
+            resolution = .res1200p
+        case "res1440p":
+            resolution = .res1440p
+        default:
+            resolution = .res1080p
+        }
+
+        // Delay restoration to ensure displays are enumerated
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.enableCrispHiDPI(resolution: resolution)
+        }
     }
 
     // MARK: - Shortcut Handlers

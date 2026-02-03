@@ -19,7 +19,7 @@ struct DisplayMenuView: View {
                 // Brightness Control
                 brightnessSection(for: display)
 
-                // Resolution Control
+                // Resolution Control (handles both native and virtual resolutions seamlessly)
                 resolutionSection(for: display)
             }
         }
@@ -132,45 +132,28 @@ struct DisplayMenuView: View {
     // MARK: - Resolution Section
 
     private func resolutionSection(for display: Display) -> some View {
-        let hidpiModes = sortedUniqueModes(for: display)
+        let resolutions = availableResolutions(for: display)
 
         return VStack(alignment: .leading, spacing: 8) {
-            // Header - show logical resolution (like BetterDisplay)
+            // Header - show current resolution
             HStack {
                 Text("Resolution")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.primary)
                 Spacer()
-                if !hidpiModes.isEmpty {
+                if !resolutions.isEmpty {
                     let index = Int(resolutionIndex.rounded())
-                    let safeIndex = min(max(index, 0), hidpiModes.count - 1)
-                    let mode = hidpiModes[safeIndex]
-                    // Show logical resolution with HiDPI/Native indicator
-                    HStack(spacing: 4) {
-                        Text("\(mode.width)x\(mode.height)")
-                            .font(.system(size: 12, weight: .regular))
-                            .foregroundColor(.secondary)
-                            .monospacedDigit()
-                        // Show mode type: HiDPI (sharp), Native (sharp), or Scaled (blurry)
-                        if mode.isHiDPI {
-                            Text("HiDPI")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(.blue.opacity(0.8))
-                        } else if isNativeResolution(mode, for: display) {
-                            Text("Native")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(.green.opacity(0.8))
-                        } else {
-                            Text("Scaled")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(.orange.opacity(0.8))
-                        }
-                    }
+                    let safeIndex = min(max(index, 0), resolutions.count - 1)
+                    let res = resolutions[safeIndex]
+                    Text("\(res.width)x\(res.height)")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(.secondary)
+                        .monospacedDigit()
                 }
             }
 
             // Slider
-            if !hidpiModes.isEmpty {
+            if !resolutions.isEmpty {
                 HStack(spacing: 10) {
                     Image(systemName: "rectangle.compress.vertical")
                         .font(.system(size: 12))
@@ -178,24 +161,15 @@ struct DisplayMenuView: View {
 
                     Slider(
                         value: $resolutionIndex,
-                        in: 0...Double(max(0, hidpiModes.count - 1)),
+                        in: 0...Double(max(0, resolutions.count - 1)),
                         step: 1,
                         onEditingChanged: { editing in
                             isEditingResolution = editing
-                            // Only apply resolution change when user releases the slider
                             if !editing {
                                 let index = Int(resolutionIndex.rounded())
-                                let safeIndex = min(max(index, 0), hidpiModes.count - 1)
-                                let selectedMode = hidpiModes[safeIndex]
-                                // Only change if different from current (compare logical dimensions)
-                                if let currentMode = display.currentMode {
-                                    if selectedMode.width != currentMode.width ||
-                                       selectedMode.height != currentMode.height {
-                                        displayManager.setResolution(selectedMode)
-                                    }
-                                } else {
-                                    displayManager.setResolution(selectedMode)
-                                }
+                                let safeIndex = min(max(index, 0), resolutions.count - 1)
+                                let selectedRes = resolutions[safeIndex]
+                                displayManager.setResolutionOption(selectedRes, for: display)
                             }
                         }
                     )
@@ -206,125 +180,163 @@ struct DisplayMenuView: View {
                         .foregroundColor(.secondary)
                 }
 
-                // Resolution labels - show logical dimensions (like BetterDisplay)
-                // Array is sorted smallest first, so first = left label, last = right label
+                // Resolution labels
                 HStack {
-                    if let smallest = hidpiModes.first {
+                    if let smallest = resolutions.first {
                         Text("\(smallest.width)x\(smallest.height)")
                             .font(.system(size: 9))
                             .foregroundColor(.secondary.opacity(0.6))
                     }
                     Spacer()
-                    if let largest = hidpiModes.last {
+                    if let largest = resolutions.last {
                         Text("\(largest.width)x\(largest.height)")
                             .font(.system(size: 9))
                             .foregroundColor(.secondary.opacity(0.6))
                     }
                 }
-            } else {
-                Text("No HiDPI modes available")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary.opacity(0.7))
             }
         }
     }
 
     // MARK: - Helpers
 
-    /// Check if a mode matches the display's native panel resolution (1:1 pixel mapping)
-    private func isNativeResolution(_ mode: DisplayMode, for display: Display) -> Bool {
-        // Native resolution = logical resolution equals pixel resolution (no scaling)
-        // AND it's the display's maximum resolution
-        guard !mode.isHiDPI else { return false }
-        guard mode.width == mode.pixelWidth && mode.height == mode.pixelHeight else { return false }
+    /// Get available resolutions for a display
+    /// For external displays, offers virtual resolutions for crisp HiDPI scaling
+    /// Only includes resolutions matching the display's native aspect ratio
+    private func availableResolutions(for display: Display) -> [ResolutionOption] {
+        var resolutions: [ResolutionOption] = []
 
-        // Check if this is the display's max native resolution
-        let maxNative = display.availableModes
-            .filter { !$0.isHiDPI && $0.width == $0.pixelWidth }
-            .max { $0.width * $0.height < $1.width * $1.height }
-
-        return maxNative?.width == mode.width && maxNative?.height == mode.height
-    }
-
-    private func sortedUniqueModes(for display: Display) -> [DisplayMode] {
-        // Get native panel resolution (highest non-HiDPI resolution)
+        // Get native panel resolution (highest non-HiDPI mode where pixels = logical)
         let maxNativeMode = display.availableModes
             .filter { !$0.isHiDPI && $0.width == $0.pixelWidth }
             .max { $0.width * $0.height < $1.width * $1.height }
 
+        // Determine native aspect ratio
         let nativeAspect: Double
-        if let maxNative = maxNativeMode {
-            nativeAspect = Double(maxNative.width) / Double(maxNative.height)
+        if let native = maxNativeMode {
+            nativeAspect = Double(native.width) / Double(native.height)
         } else {
-            nativeAspect = 16.0 / 9.0
+            nativeAspect = 16.0 / 9.0  // Default to 16:9
         }
 
-        var unique: [String: DisplayMode] = [:]
+        // Helper to check if resolution matches aspect ratio (within 2% tolerance)
+        func matchesAspect(_ width: Int, _ height: Int) -> Bool {
+            let aspect = Double(width) / Double(height)
+            return abs(aspect - nativeAspect) / nativeAspect < 0.02
+        }
 
-        // Add all HiDPI modes with matching aspect ratio (these are SHARP)
-        let hidpiModes = display.availableModes.filter { $0.isHiDPI }
-        for mode in hidpiModes {
-            let modeAspect = Double(mode.width) / Double(mode.height)
-            let aspectDiff = abs(modeAspect - nativeAspect) / nativeAspect
-            guard aspectDiff < 0.02 else { continue }
+        // Minimum resolution height (576p - close to 600p, clean 16:9)
+        let minHeight = 576
 
-            let key = "\(mode.width)x\(mode.height)-hidpi"
-            if let existing = unique[key] {
-                if mode.refreshRate > existing.refreshRate {
-                    unique[key] = mode
-                }
+        // For external displays, add virtual resolutions for crisp scaling
+        if !display.isBuiltIn {
+            // Generate resolutions matching the display's aspect ratio
+            // For 16:9: width = height * 16/9
+            // For 16:10: width = height * 16/10
+
+            let virtualOptions: [(Int, Int)]
+
+            // Check if display is 16:9 or 16:10 (within tolerance)
+            let is16by9 = abs(nativeAspect - 16.0/9.0) < 0.02
+            let is16by10 = abs(nativeAspect - 16.0/10.0) < 0.02
+
+            if is16by9 {
+                // 16:9 resolutions from 576p to 1440p
+                virtualOptions = [
+                    (1024, 576),   // 576p
+                    (1152, 648),   // 648p
+                    (1280, 720),   // 720p HD
+                    (1366, 768),   // 768p (common laptop)
+                    (1600, 900),   // 900p HD+
+                    (1792, 1008),  // 1008p
+                    (1920, 1080),  // 1080p Full HD
+                    (2048, 1152),  // 1152p
+                    (2560, 1440),  // 1440p QHD
+                ]
+            } else if is16by10 {
+                // 16:10 resolutions
+                virtualOptions = [
+                    (1280, 800),   // WXGA
+                    (1440, 900),   // WXGA+
+                    (1680, 1050),  // WSXGA+
+                    (1920, 1200),  // WUXGA
+                    (2560, 1600),  // WQXGA
+                ]
             } else {
-                unique[key] = mode
+                // Fallback to common resolutions
+                virtualOptions = [
+                    (1280, 720),
+                    (1600, 900),
+                    (1920, 1080),
+                ]
+            }
+
+            for (w, h) in virtualOptions {
+                // Only add if meets minimum height
+                guard h >= minHeight else { continue }
+                // Don't add if it matches native resolution exactly (will add native below)
+                if let native = maxNativeMode, native.width == w && native.height == h {
+                    continue
+                }
+                resolutions.append(ResolutionOption(width: w, height: h, isVirtual: true, nativeMode: nil))
             }
         }
 
-        // Add ONLY the native panel resolution (this is SHARP - 1:1 pixel mapping)
-        // Skip intermediate scaled resolutions as they are BLURRY
-        if let nativeMode = maxNativeMode {
-            let key = "\(nativeMode.width)x\(nativeMode.height)-native"
-            // Find the highest refresh rate version
-            let bestNative = display.availableModes
-                .filter { !$0.isHiDPI && $0.width == nativeMode.width && $0.height == nativeMode.height }
-                .max { $0.refreshRate < $1.refreshRate }
-            if let best = bestNative {
-                unique[key] = best
+        // Add native HiDPI modes that match aspect ratio and minimum height
+        for mode in display.availableModes.filter({ $0.isHiDPI }) {
+            guard matchesAspect(mode.width, mode.height) && mode.height >= minHeight else { continue }
+            if !resolutions.contains(where: { $0.width == mode.width && $0.height == mode.height }) {
+                resolutions.append(ResolutionOption(width: mode.width, height: mode.height, isVirtual: false, nativeMode: mode))
             }
         }
 
-        // Sort by logical resolution (smallest first for slider: left=small/large UI, right=large/small UI)
-        return unique.values.sorted { ($0.width * $0.height) < ($1.width * $1.height) }
+        // Add native panel resolution (1:1 pixel mapping - always sharp)
+        if let native = maxNativeMode {
+            if !resolutions.contains(where: { $0.width == native.width && $0.height == native.height }) {
+                resolutions.append(ResolutionOption(width: native.width, height: native.height, isVirtual: false, nativeMode: native))
+            }
+        }
+
+        // Sort by height (smallest first)
+        return resolutions.sorted { $0.height < $1.height }
     }
 
     private func updateResolutionIndex() {
         guard let display = displayManager.selectedDisplay else { return }
-        // Don't update while user is actively sliding
         guard !isEditingResolution else { return }
 
-        let modes = sortedUniqueModes(for: display)
-        guard !modes.isEmpty else {
+        let resolutions = availableResolutions(for: display)
+        guard !resolutions.isEmpty else {
             resolutionIndex = 0
             return
         }
 
-        guard let currentMode = display.currentMode else {
+        // Get current logical resolution
+        let currentWidth: Int
+        let currentHeight: Int
+
+        if displayManager.crispHiDPIActive, let virtualRes = displayManager.currentVirtualResolution {
+            // Virtual display active - use virtual resolution's logical size
+            currentWidth = virtualRes.logicalWidth
+            currentHeight = virtualRes.logicalHeight
+        } else if let currentMode = display.currentMode {
+            currentWidth = currentMode.width
+            currentHeight = currentMode.height
+        } else {
             resolutionIndex = 0
             return
         }
 
-        // Match by logical dimensions (what BetterDisplay shows)
-        if let index = modes.firstIndex(where: {
-            $0.width == currentMode.width &&
-            $0.height == currentMode.height
-        }) {
+        // Find matching resolution
+        if let index = resolutions.firstIndex(where: { $0.width == currentWidth && $0.height == currentHeight }) {
             resolutionIndex = Double(index)
         } else {
-            // If current mode is not in HiDPI list, find the closest by logical area
-            let currentArea = currentMode.width * currentMode.height
+            // Find closest
+            let currentArea = currentWidth * currentHeight
             var closestIndex = 0
             var closestDiff = Int.max
-
-            for (index, mode) in modes.enumerated() {
-                let diff = abs(mode.width * mode.height - currentArea)
+            for (index, res) in resolutions.enumerated() {
+                let diff = abs(res.width * res.height - currentArea)
                 if diff < closestDiff {
                     closestDiff = diff
                     closestIndex = index
