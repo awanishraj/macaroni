@@ -111,26 +111,12 @@ final class DisplayManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     init() {
-        logger.info("[init] DisplayManager initializing...")
         refreshDisplays()
-        logger.info("[init] After refreshDisplays - displays count: \(self.displays.count)")
-        for d in displays {
-            logger.info("[init] Display: id=\(d.id), name=\(d.name), isBuiltIn=\(d.isBuiltIn), supportsDDC=\(d.supportsDDC)")
-        }
-
         restoreSelectedDisplay()
-        logger.info("[init] After restoreSelectedDisplay - selectedDisplay: \(self.selectedDisplay?.name ?? "nil") (id: \(self.selectedDisplay?.id ?? 0))")
-
         setupDisplayNotifications()
         startBrightnessMonitoring()
         setupShortcutHandlers()
-
-        logger.info("[init] About to call restoreCrispHiDPIState...")
-        logger.info("[init] Preferences.crispHiDPIEnabled: \(Preferences.shared.crispHiDPIEnabled)")
-        logger.info("[init] Preferences.crispHiDPIResolution: \(Preferences.shared.crispHiDPIResolution)")
-
         restoreCrispHiDPIState()
-        logger.info("[init] DisplayManager initialized")
     }
 
     /// Restore previously selected display from preferences
@@ -148,67 +134,34 @@ final class DisplayManager: ObservableObject {
 
     /// Restore crisp HiDPI state from preferences
     private func restoreCrispHiDPIState() {
-        logger.info("[restoreCrispHiDPIState] Starting...")
-        logger.info("[restoreCrispHiDPIState] crispHiDPIEnabled: \(Preferences.shared.crispHiDPIEnabled)")
-
-        guard Preferences.shared.crispHiDPIEnabled else {
-            logger.info("[restoreCrispHiDPIState] crispHiDPIEnabled is false, returning")
-            return
-        }
-
-        guard let display = selectedDisplay, !display.isBuiltIn else {
-            logger.info("[restoreCrispHiDPIState] No external display selected, returning")
-            return
-        }
-
-        logger.info("[restoreCrispHiDPIState] Selected display: \(display.name), id: \(display.id)")
+        guard Preferences.shared.crispHiDPIEnabled else { return }
+        guard let display = selectedDisplay, !display.isBuiltIn else { return }
 
         // Parse saved resolution (format: "WIDTHxHEIGHT")
         let savedResolution = Preferences.shared.crispHiDPIResolution
-        logger.info("[restoreCrispHiDPIState] savedResolution: \(savedResolution)")
-
         let components = savedResolution.replacingOccurrences(of: "VirtualResolution(logicalWidth: ", with: "")
             .replacingOccurrences(of: ", logicalHeight: ", with: "x")
             .replacingOccurrences(of: ")", with: "")
             .split(separator: "x")
 
-        logger.info("[restoreCrispHiDPIState] Parsed components: \(components)")
-
         if components.count == 2,
            let width = Int(components[0]),
            let height = Int(components[1]) {
             let resolution = VirtualResolution(logicalWidth: width, logicalHeight: height)
-            logger.info("[restoreCrispHiDPIState] Restoring crisp HiDPI with \(resolution.displayName)")
+            logger.info("Restoring crisp HiDPI with \(resolution.displayName)")
 
             // Find the REAL physical display by checking which external display has DDC support
             // The virtual display won't have an IOAVService, so it won't show up in DDC external displays
             let ddcExternalDisplays = ddcService.getExternalDisplays()
-            logger.info("[restoreCrispHiDPIState] DDC external displays: \(ddcExternalDisplays)")
 
             // Use first DDC-capable external display as the physical display
-            // If none found, fall back to selectedDisplay.id (might not work but worth trying)
-            let physicalID: CGDirectDisplayID
-            if let firstDDCDisplay = ddcExternalDisplays.first {
-                physicalID = firstDDCDisplay
-                logger.info("[restoreCrispHiDPIState] Using DDC-detected physical display: \(physicalID)")
-            } else {
-                physicalID = display.id
-                logger.warning("[restoreCrispHiDPIState] No DDC displays found, falling back to selected: \(physicalID)")
-            }
-
+            let physicalID = ddcExternalDisplays.first ?? display.id
             physicalDisplayIDForDDC = physicalID
-            logger.info("[restoreCrispHiDPIState] Stored physical display ID for DDC: \(physicalID)")
 
             // Delay to allow display system to settle after app launch
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                guard let self = self else { return }
-                logger.info("[restoreCrispHiDPIState] After 1s delay - calling enableCrispHiDPI")
-                logger.info("[restoreCrispHiDPIState] physicalDisplayIDForDDC before enable: \(self.physicalDisplayIDForDDC ?? 0)")
-                self.enableCrispHiDPI(resolution: resolution, physicalDisplayID: physicalID)
-                logger.info("[restoreCrispHiDPIState] physicalDisplayIDForDDC after enable: \(self.physicalDisplayIDForDDC ?? 0)")
+                self?.enableCrispHiDPI(resolution: resolution, physicalDisplayID: physicalID)
             }
-        } else {
-            logger.error("[restoreCrispHiDPIState] Failed to parse resolution from: \(savedResolution)")
         }
     }
 
@@ -265,22 +218,7 @@ final class DisplayManager: ObservableObject {
     }
 
     func setBrightness(_ value: Double) {
-        guard let display = selectedDisplay else {
-            logger.error("[setBrightness] No selectedDisplay")
-            return
-        }
-
-        // Debug: Log all relevant state
-        logger.info("[setBrightness] === BRIGHTNESS DEBUG START ===")
-        logger.info("[setBrightness] value: \(value)")
-        logger.info("[setBrightness] crispHiDPIActive: \(self.crispHiDPIActive)")
-        logger.info("[setBrightness] physicalDisplayIDForDDC: \(self.physicalDisplayIDForDDC.map { String($0) } ?? "nil")")
-        logger.info("[setBrightness] selectedDisplay.id: \(display.id)")
-        logger.info("[setBrightness] selectedDisplay.name: \(display.name)")
-        logger.info("[setBrightness] selectedDisplay.supportsDDC: \(display.supportsDDC)")
-        logger.info("[setBrightness] mirrorService.isActive: \(self.mirrorService.isActive)")
-        logger.info("[setBrightness] mirrorService.destination: \(self.mirrorService.destination.map { String($0) } ?? "nil")")
-        logger.info("[setBrightness] mirrorService.source: \(self.mirrorService.source.map { String($0) } ?? "nil")")
+        guard let display = selectedDisplay else { return }
 
         // When crisp HiDPI is active, we need to find the REAL physical display for DDC
         // The virtual display won't have an IOAVService, so we use DDC service cache
@@ -289,36 +227,23 @@ final class DisplayManager: ObservableObject {
             // PRIMARY: Get physical display from DDC service cache - this is ALWAYS correct
             // because only the real physical display will have an IOAVService
             if let ddcPhysical = ddcService.getPhysicalDisplayWithDDC() {
-                logger.info("[setBrightness] Using DDC physical display: \(ddcPhysical)")
                 targetDisplayID = ddcPhysical
-                // Update physicalDisplayIDForDDC to the correct value
                 if physicalDisplayIDForDDC != ddcPhysical {
-                    logger.info("[setBrightness] Updating physicalDisplayIDForDDC from \(self.physicalDisplayIDForDDC ?? 0) to \(ddcPhysical)")
                     physicalDisplayIDForDDC = ddcPhysical
                 }
             } else if let mirrorDest = mirrorService.destination {
-                // FALLBACK 1: Use mirror destination
-                logger.info("[setBrightness] Using mirrorService.destination: \(mirrorDest)")
                 targetDisplayID = mirrorDest
             } else if let physicalID = physicalDisplayIDForDDC {
-                // FALLBACK 2: Use stored ID
-                logger.info("[setBrightness] Using stored physicalDisplayIDForDDC: \(physicalID)")
                 targetDisplayID = physicalID
             } else {
-                logger.warning("[setBrightness] No physical ID available, using display.id: \(display.id)")
                 targetDisplayID = display.id
             }
         } else {
-            logger.info("[setBrightness] Crisp HiDPI not active, using display.id: \(display.id)")
             targetDisplayID = display.id
         }
 
-        logger.info("[setBrightness] Final targetDisplayID: \(targetDisplayID)")
-        logger.info("[setBrightness] === BRIGHTNESS DEBUG END ===")
-
         let brightnessInt = Int(value * 100)
-        let success = ddcService.setBrightness(brightnessInt, for: targetDisplayID)
-        logger.info("[setBrightness] DDC setBrightness result: \(success)")
+        ddcService.setBrightness(brightnessInt, for: targetDisplayID)
 
         // Update display state
         if let index = displays.firstIndex(where: { $0.id == display.id }) {
@@ -650,19 +575,10 @@ final class DisplayManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            guard let self = self else { return }
-            logger.info("[screenParametersChanged] Display configuration changed!")
-            logger.info("[screenParametersChanged] Before refresh - crispHiDPIActive: \(self.crispHiDPIActive)")
-            logger.info("[screenParametersChanged] Before refresh - physicalDisplayIDForDDC: \(self.physicalDisplayIDForDDC ?? 0)")
-
             // Clear DDC caches when display configuration changes
             // This handles display connect/disconnect
-            self.ddcService.clearCaches()
-            self.refreshDisplays()
-
-            logger.info("[screenParametersChanged] After refresh - crispHiDPIActive: \(self.crispHiDPIActive)")
-            logger.info("[screenParametersChanged] After refresh - physicalDisplayIDForDDC: \(self.physicalDisplayIDForDDC ?? 0)")
-            logger.info("[screenParametersChanged] After refresh - selectedDisplay: \(self.selectedDisplay?.name ?? "nil") (id: \(self.selectedDisplay?.id ?? 0))")
+            self?.ddcService.clearCaches()
+            self?.refreshDisplays()
         }
     }
 

@@ -121,40 +121,23 @@ final class DDCService {
                 if let locationRef = IORegistryEntryCreateCFProperty(entry, "Location" as CFString, kCFAllocatorDefault, 0) {
                     let location = locationRef.takeRetainedValue() as? String
 
-                    logger.info("Found \(classNameStr) with location: \(location ?? "nil")")
-
                     if location == "External" {
-                        logger.info("Creating IOAVService for external display from \(classNameStr)...")
-
                         // Create IOAVService
                         if let avService = IOAVServiceCreateWithService(kCFAllocatorDefault, entry) {
                             foundCount += 1
-                            logger.info("Successfully created IOAVService from \(classNameStr)")
 
                             // Match to display ID
                             let externalDisplays = getExternalDisplays()
-                            logger.info("[discoverServices] External displays found: \(externalDisplays)")
-
                             if let firstExternal = externalDisplays.first, serviceCache[firstExternal] == nil {
                                 serviceCache[firstExternal] = AVServiceInfo(service: avService, displayID: firstExternal)
-                                logger.info("Cached IOAVService for display \(firstExternal)")
-                            } else if externalDisplays.isEmpty {
-                                logger.warning("[discoverServices] No external displays found to cache service!")
-                            } else {
-                                logger.info("[discoverServices] Service already cached for \(externalDisplays.first!)")
                             }
-                        } else {
-                            logger.error("IOAVServiceCreateWithService returned nil for \(classNameStr)")
                         }
                     }
-                } else {
-                    // No Location property
-                    logger.debug("Found \(classNameStr) without Location property")
                 }
             }
         }
 
-        logger.info("Service discovery complete. Found \(foundCount) external services, cached \(self.serviceCache.count).")
+        logger.debug("Service discovery complete. Found \(foundCount) external services, cached \(self.serviceCache.count).")
     }
 
     /// Match an IORegistry entry to a CGDisplayID using EDID
@@ -169,29 +152,14 @@ final class DDCService {
 
     /// Get IOAVService for a display
     private func getAVService(for displayID: CGDirectDisplayID) -> IOAVServiceRef? {
-        logger.info("[getAVService] Looking for displayID: \(displayID)")
-        logger.info("[getAVService] Current cache keys: \(Array(self.serviceCache.keys))")
-
         // Check cache first
         if let cached = serviceCache[displayID] {
-            logger.info("[getAVService] Found in cache for displayID: \(displayID)")
             return cached.service
         }
 
-        logger.info("[getAVService] Not in cache, re-discovering services...")
-
         // Re-discover services if not found
         discoverServices()
-
-        if let service = serviceCache[displayID]?.service {
-            logger.info("[getAVService] Found after re-discovery for displayID: \(displayID)")
-            return service
-        }
-
-        logger.warning("[getAVService] Still not found after re-discovery for displayID: \(displayID)")
-        logger.info("[getAVService] Available display IDs in cache: \(Array(self.serviceCache.keys))")
-
-        return nil
+        return serviceCache[displayID]?.service
     }
 
     // MARK: - Public API
@@ -221,14 +189,8 @@ final class DDCService {
     /// Set brightness value on display
     @discardableResult
     func setBrightness(_ brightness: Int, for displayID: CGDirectDisplayID) -> Bool {
-        logger.info("[DDC setBrightness] displayID: \(displayID), brightness: \(brightness)")
-        logger.info("[DDC setBrightness] serviceCache keys: \(Array(self.serviceCache.keys))")
-        logger.info("[DDC setBrightness] ddcSupportCache: \(self.ddcSupportCache)")
-
         let clampedValue = max(0, min(100, brightness))
-        let result = writeVCPValue(displayID: displayID, code: .brightness, value: UInt16(clampedValue))
-        logger.info("[DDC setBrightness] writeVCPValue result: \(result)")
-        return result
+        return writeVCPValue(displayID: displayID, code: .brightness, value: UInt16(clampedValue))
     }
 
     /// Get maximum brightness value
@@ -258,22 +220,15 @@ final class DDCService {
         if serviceCache.isEmpty {
             discoverServices()
         }
-
-        logger.info("[getPhysicalDisplayWithDDC] serviceCache keys: \(Array(self.serviceCache.keys))")
-
         // Return the first display ID that has a cached service
         return serviceCache.keys.first
     }
 
     /// Clear caches (call when display configuration changes)
     func clearCaches() {
-        logger.info("[clearCaches] Clearing DDC caches...")
-        logger.info("[clearCaches] Before clear - serviceCache keys: \(Array(self.serviceCache.keys))")
         ddcSupportCache.removeAll()
         serviceCache.removeAll()
-        logger.info("[clearCaches] Cache cleared, re-discovering services...")
         discoverServices()
-        logger.info("[clearCaches] After discovery - serviceCache keys: \(Array(self.serviceCache.keys))")
     }
 
     // MARK: - DDC/CI Protocol Implementation

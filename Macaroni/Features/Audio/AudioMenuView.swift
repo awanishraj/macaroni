@@ -4,7 +4,6 @@ struct AudioMenuView: View {
     @EnvironmentObject var audioManager: AudioManager
     @State private var isInstallingProxy = false
     @State private var proxyInstallError: String?
-    @State private var showInstallSuccess = false
 
     /// Show install prompt if device lacks volume control and proxy not installed
     private var shouldShowProxyInstall: Bool {
@@ -267,20 +266,8 @@ struct AudioMenuView: View {
     }
 
     private func reinstallProxy() {
-        isInstallingProxy = true
-        proxyInstallError = nil
-
-        AudioProxyInstaller.shared.install { success, error in
-            isInstallingProxy = false
-
-            if success {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    audioManager.refreshDevices()
-                }
-            } else if let error = error {
-                proxyInstallError = error
-            }
-        }
+        // Reinstall uses the same logic as install
+        installProxy()
     }
 }
 

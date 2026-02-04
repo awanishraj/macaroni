@@ -81,28 +81,23 @@ final class AudioManager: ObservableObject {
         }
 
         let clampedValue = max(0, min(1, value))
-        var volumeSet = false
 
         // Set volume using virtual main volume if available
         if scaDevice.canSetVirtualMainVolume(scope: .output) {
             scaDevice.setVirtualMainVolume(clampedValue, scope: .output)
-            volumeSet = true
         }
 
         // Fallback: set on individual stereo channels (1 = left, 2 = right for stereo devices)
         if scaDevice.canSetVolume(channel: 1, scope: .output) {
             scaDevice.setVolume(clampedValue, channel: 1, scope: .output)
-            volumeSet = true
         }
         if scaDevice.canSetVolume(channel: 2, scope: .output) {
             scaDevice.setVolume(clampedValue, channel: 2, scope: .output)
-            volumeSet = true
         }
 
         // Also try channel 0 (master)
         if scaDevice.canSetVolume(channel: 0, scope: .output) {
             scaDevice.setVolume(clampedValue, channel: 0, scope: .output)
-            volumeSet = true
         }
 
         // Update local state
