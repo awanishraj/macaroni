@@ -7,7 +7,7 @@
     <key>CFBundleDisplayName</key>
     <string>Macaroni Camera</string>
     <key>CFBundleExecutable</key>
-    <string>MacaroniCameraExtension</string>
+    <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
     <string>com.macaroni.app.camera-extension</string>
     <key>CFBundleInfoDictionaryVersion</key>
@@ -15,24 +15,19 @@
     <key>CFBundleName</key>
     <string>MacaroniCameraExtension</string>
     <key>CFBundlePackageType</key>
-    <string>XPC!</string>
+    <string>SYSX</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
-    <key>NSExtension</key>
-    <dict>
-        <key>NSExtensionPointIdentifier</key>
-        <string>com.apple.cmio.extension-provider</string>
-        <key>NSExtensionPrincipalClass</key>
-        <string>$(PRODUCT_MODULE_NAME).MacaroniCameraExtensionMain</string>
-    </dict>
+    <key>NSSystemExtensionUsageDescription</key>
+    <string>This extension enables virtual camera functionality in Macaroni.</string>
     <key>CMIOExtension</key>
     <dict>
-        <key>CMIOExtensionDeviceType</key>
-        <string>Video</string>
+        <key>CMIOExtensionMachServiceName</key>
+        <string>43QM98RMK6.com.macaroni.app.camera-extension</string>
     </dict>
 </dict>
 </plist>

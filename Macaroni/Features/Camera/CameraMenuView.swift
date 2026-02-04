@@ -3,6 +3,7 @@ import SwiftUI
 struct CameraMenuView: View {
     @EnvironmentObject var cameraManager: CameraManager
     @EnvironmentObject var preferences: Preferences
+    @ObservedObject private var extensionManager = SystemExtensionManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -15,6 +16,9 @@ struct CameraMenuView: View {
 
                 // Transform Controls
                 transformSection
+
+                // Virtual Camera Section
+                virtualCameraSection
 
                 // Camera selector at bottom
                 if cameraManager.cameras.count > 1 {
@@ -156,6 +160,86 @@ struct CameraMenuView: View {
             }
         }
     }
+
+    // MARK: - Virtual Camera Section
+
+    private var virtualCameraSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Virtual Camera")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(extensionStatusColor)
+                        .frame(width: 6, height: 6)
+                    Text(extensionStatusText)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    extensionManager.activateCameraExtension()
+                } label: {
+                    Text(extensionManager.cameraExtensionStatus == .activated ? "Activated" : "Activate")
+                        .font(.system(size: 10, weight: .medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(extensionManager.cameraExtensionStatus == .activated ? Color.green.opacity(0.2) : Color.accentColor)
+                        .foregroundColor(extensionManager.cameraExtensionStatus == .activated ? .green : .white)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+                .disabled(extensionManager.cameraExtensionStatus == .activating || extensionManager.cameraExtensionStatus == .activated)
+
+                if extensionManager.cameraExtensionStatus == .activated {
+                    Text("Available as \"Macaroni Camera\"")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary.opacity(0.7))
+                }
+            }
+
+            if case .failed(let error) = extensionManager.cameraExtensionStatus {
+                Text(error)
+                    .font(.system(size: 9))
+                    .foregroundColor(.orange)
+                    .lineLimit(2)
+            }
+
+            if extensionManager.cameraExtensionStatus == .needsApproval {
+                Text("Go to System Settings > Privacy & Security to approve")
+                    .font(.system(size: 9))
+                    .foregroundColor(.orange)
+            }
+        }
+    }
+
+    private var extensionStatusText: String {
+        switch extensionManager.cameraExtensionStatus {
+        case .unknown: return "Not Installed"
+        case .notInstalled: return "Not Installed"
+        case .activating: return "Activating..."
+        case .activated: return "Active"
+        case .needsApproval: return "Needs Approval"
+        case .failed: return "Failed"
+        }
+    }
+
+    private var extensionStatusColor: Color {
+        switch extensionManager.cameraExtensionStatus {
+        case .activated: return .green
+        case .activating: return .yellow
+        case .needsApproval: return .orange
+        case .failed: return .red
+        default: return .gray
+        }
+    }
+
 
     // MARK: - Camera Selector (dropdown, not segmented)
 

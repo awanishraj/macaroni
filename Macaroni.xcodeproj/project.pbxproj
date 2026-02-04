@@ -23,6 +23,7 @@
 		36FC754BAF49AAA0309F59D0 /* DeviceIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 75E50C0A760B7A959063A02A /* DeviceIcon.icns */; };
 		37E1ACF29654B18D616F4375 /* MacaroniAudioProxy.bundle in Resources */ = {isa = PBXBuildFile; fileRef = D696AE189AB4CE38B83F5E3F /* MacaroniAudioProxy.bundle */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		3B5D4BC53C7B78D426D6D27A /* CameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27F4CFC73BB2F90FE7B0C5CB /* CameraManager.swift */; };
+		3F2BDB8D920C4D262BF6D731 /* FrameReceiver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD191DA3A6A4FCFE7B4348F /* FrameReceiver.swift */; };
 		3F60BE797E118BDB44CC6473 /* VirtualDisplayService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D278C98AF8FFB780AFF989FC /* VirtualDisplayService.swift */; };
 		4114FD8EA6647A84F5760D96 /* LaunchAtLogin in Frameworks */ = {isa = PBXBuildFile; productRef = CA7FEF6A3CD0891606783468 /* LaunchAtLogin */; };
 		4319134E44EAB09B856D0ECE /* ProxyAudioDevice.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 96E1BCC7717DE33B4BCD22F7 /* ProxyAudioDevice.cpp */; };
@@ -37,6 +38,7 @@
 		61B9B49D603B2AA2A9D98A0B /* ExtensionStreamSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B4028435E76043346BD907 /* ExtensionStreamSource.swift */; };
 		6C62DF101B995A4307953B3D /* MacaroniAudioDriver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1177072FF9488DF146502C92 /* MacaroniAudioDriver.cpp */; };
 		6FB668B57AE0431698BFDD69 /* SimplyCoreAudio in Frameworks */ = {isa = PBXBuildFile; productRef = 6E2A42BF616D971595BF2CBF /* SimplyCoreAudio */; };
+		6FBA7029EFBA163260700867 /* MacaroniCameraExtension.systemextension in Embed System Extensions */ = {isa = PBXBuildFile; fileRef = 48BD2D841F3F29C2BC39D314 /* MacaroniCameraExtension.systemextension */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7DB544E8AD88E1D8AE767649 /* AudioRingBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0D806E9A903C90220ADB32EF /* AudioRingBuffer.cpp */; };
 		8440A7D224F43BAE284B5FCC /* ExtensionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700C07234D9752F0A0321C4C /* ExtensionProvider.swift */; };
 		8B0146B289435FDF2ADFCC6A /* DDCService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFE5103C6B4CB9A7AE56A77B /* DDCService.swift */; };
@@ -47,6 +49,7 @@
 		B74E3ACB768AFF9FF5E77222 /* ShortcutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57349BEE05261C02FA223775 /* ShortcutManager.swift */; };
 		BBA6534189D0F689D9A3C62D /* MacaroniAudioDriver.iig in Sources */ = {isa = PBXBuildFile; fileRef = B9309AE507B5183B32CE0116 /* MacaroniAudioDriver.iig */; };
 		BDFFAF2EF86C00D1CA92EBE6 /* SMCWriteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2847F4A564565097F019BDC /* SMCWriteService.swift */; };
+		CA5D741B04A9AF40F07D5085 /* VirtualCameraServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93EA20FBB2A3363CFA38581 /* VirtualCameraServer.swift */; };
 		D406777071C133FF0EB22C33 /* DisplayMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010C45D0A1DB7FF472D41890 /* DisplayMenuView.swift */; };
 		E1A804C18517DA67406DB2D6 /* CAMutex.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 31534443A4C698D0DEC1A812 /* CAMutex.cpp */; };
 		E2376C2640445FF6DAE179A5 /* Solar in Frameworks */ = {isa = PBXBuildFile; productRef = 4595E03A7F2A32591A4B153A /* Solar */; };
@@ -58,6 +61,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		039C24C3FE48B4A6DB1B5449 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A552AD462823B5D3DF2BFFC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 52EAB5177BE1CAC188D896F7;
+			remoteInfo = MacaroniCameraExtension;
+		};
 		4F18E3B062D51884A047FB61 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 0A552AD462823B5D3DF2BFFC /* Project object */;
@@ -66,6 +76,20 @@
 			remoteInfo = MacaroniAudioProxy;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AA7C46D0FEE9D7989A8329AA /* Embed System Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(SYSTEM_EXTENSIONS_FOLDER_PATH)";
+			dstSubfolderSpec = 16;
+			files = (
+				6FBA7029EFBA163260700867 /* MacaroniCameraExtension.systemextension in Embed System Extensions */,
+			);
+			name = "Embed System Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		010C45D0A1DB7FF472D41890 /* DisplayMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMenuView.swift; sourceTree = "<group>"; };
@@ -79,6 +103,7 @@
 		149467A703482E725F8D8871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1657A78B8A2763883EBAEDEB /* MacaroniFanHelper */ = {isa = PBXFileReference; includeInIndex = 0; path = MacaroniFanHelper; sourceTree = BUILT_PRODUCTS_DIR; };
 		1897421FE99A9D90EDB9103F /* CADebugMacros.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CADebugMacros.cpp; sourceTree = "<group>"; };
+		1BD191DA3A6A4FCFE7B4348F /* FrameReceiver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameReceiver.swift; sourceTree = "<group>"; };
 		1BD32E2A5F45268F3041583F /* FanCurveController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanCurveController.swift; sourceTree = "<group>"; };
 		1E2BCDC61AD6E03DF21C802A /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
 		27F4CFC73BB2F90FE7B0C5CB /* CameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraManager.swift; sourceTree = "<group>"; };
@@ -89,6 +114,7 @@
 		4181249F663944E6781D0D1A /* CGVirtualDisplay.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CGVirtualDisplay.h; sourceTree = "<group>"; };
 		43B0E049632183783CE2B897 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		46706974947C289C36D53621 /* FanHelperInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanHelperInstaller.swift; sourceTree = "<group>"; };
+		47A392997285DB936D1D81C3 /* MacaroniCameraExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacaroniCameraExtension.entitlements; sourceTree = "<group>"; };
 		48BD2D841F3F29C2BC39D314 /* MacaroniCameraExtension.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; path = MacaroniCameraExtension.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
 		4AFA2EE163561C24BE2B71A1 /* MacaroniApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacaroniApp.swift; sourceTree = "<group>"; };
 		5009920BF1363D5FCB9F0B16 /* CAMutex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CAMutex.h; sourceTree = "<group>"; };
@@ -122,6 +148,7 @@
 		BA890391AE3074D4B56EDBEB /* utilities.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = utilities.cpp; sourceTree = "<group>"; };
 		C19120DF198E721F7281A9DF /* FrameProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameProcessor.swift; sourceTree = "<group>"; };
 		C901AE358AB08CC3F04B464A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		C93EA20FBB2A3363CFA38581 /* VirtualCameraServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCameraServer.swift; sourceTree = "<group>"; };
 		CA31D5A9831EBE7BB9CF1CDA /* CFTypeHelpers.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CFTypeHelpers.h; sourceTree = "<group>"; };
 		D278C98AF8FFB780AFF989FC /* VirtualDisplayService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualDisplayService.swift; sourceTree = "<group>"; };
 		D2847F4A564565097F019BDC /* SMCWriteService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMCWriteService.swift; sourceTree = "<group>"; };
@@ -182,6 +209,7 @@
 				913C7F923EDEA902EF7909F5 /* CameraMenuView.swift */,
 				F3FCE87B2C2A8866001ACDC7 /* CameraPreviewPopover.swift */,
 				C19120DF198E721F7281A9DF /* FrameProcessor.swift */,
+				C93EA20FBB2A3363CFA38581 /* VirtualCameraServer.swift */,
 			);
 			path = Camera;
 			sourceTree = "<group>";
@@ -192,7 +220,9 @@
 				B8C21B2C1714FCCD2440823C /* ExtensionDeviceSource.swift */,
 				700C07234D9752F0A0321C4C /* ExtensionProvider.swift */,
 				A2B4028435E76043346BD907 /* ExtensionStreamSource.swift */,
+				1BD191DA3A6A4FCFE7B4348F /* FrameReceiver.swift */,
 				9E033F7631970336901E499A /* Info.plist */,
+				47A392997285DB936D1D81C3 /* MacaroniCameraExtension.entitlements */,
 			);
 			path = MacaroniCameraExtension;
 			sourceTree = "<group>";
@@ -427,11 +457,13 @@
 				3B5BC056EBC07871B6CD9CA2 /* Sources */,
 				D703FFCF3585B6F0B5B83F2F /* Resources */,
 				FF87D64A449D61183DD218E4 /* Frameworks */,
+				AA7C46D0FEE9D7989A8329AA /* Embed System Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				3B1C977378B0D590E8B7BBFF /* PBXTargetDependency */,
+				584A8512BDFEF38EFF957007 /* PBXTargetDependency */,
 			);
 			name = Macaroni;
 			packageProductDependencies = (
@@ -589,6 +621,7 @@
 				482717B5519C26F777CE2539 /* SystemExtensionManager.swift in Sources */,
 				144F61AF5910D025701314DF /* ThermalService.swift in Sources */,
 				03A42CAE370618769CCFDD13 /* ToggleRow.swift in Sources */,
+				CA5D741B04A9AF40F07D5085 /* VirtualCameraServer.swift in Sources */,
 				3F60BE797E118BDB44CC6473 /* VirtualDisplayService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -634,6 +667,7 @@
 				5F37534A9FCF5E80E36F4829 /* ExtensionDeviceSource.swift in Sources */,
 				8440A7D224F43BAE284B5FCC /* ExtensionProvider.swift in Sources */,
 				61B9B49D603B2AA2A9D98A0B /* ExtensionStreamSource.swift in Sources */,
+				3F2BDB8D920C4D262BF6D731 /* FrameReceiver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -644,6 +678,11 @@
 			isa = PBXTargetDependency;
 			target = 772D6B5879866581DC383B94 /* MacaroniAudioProxy */;
 			targetProxy = 4F18E3B062D51884A047FB61 /* PBXContainerItemProxy */;
+		};
+		584A8512BDFEF38EFF957007 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 52EAB5177BE1CAC188D896F7 /* MacaroniCameraExtension */;
+			targetProxy = 039C24C3FE48B4A6DB1B5449 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -772,6 +811,7 @@
 				CODE_SIGN_ENTITLEMENTS = Macaroni/Macaroni.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 43QM98RMK6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -799,8 +839,10 @@
 		7060470FCFC32205E2B60894 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MacaroniCameraExtension/MacaroniCameraExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 43QM98RMK6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = MacaroniCameraExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -808,6 +850,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.macaroni.app.camera-extension";
+				PRODUCT_NAME = "com.macaroni.app.camera-extension";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 			};
@@ -820,6 +863,7 @@
 				CODE_SIGN_ENTITLEMENTS = Macaroni/Macaroni.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 43QM98RMK6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -876,8 +920,10 @@
 		AE7817A57D525E74D91CEFD0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MacaroniCameraExtension/MacaroniCameraExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 43QM98RMK6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = MacaroniCameraExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -885,6 +931,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.macaroni.app.camera-extension";
+				PRODUCT_NAME = "com.macaroni.app.camera-extension";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 			};
@@ -923,6 +970,8 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
@@ -982,6 +1031,8 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;

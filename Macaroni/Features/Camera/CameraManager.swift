@@ -46,6 +46,9 @@ final class CameraManager: NSObject, ObservableObject {
     private let frameProcessor = FrameProcessor()
     private var cancellables = Set<AnyCancellable>()
 
+    // Virtual camera server for sharing frames with extension
+    private let virtualCameraServer = VirtualCameraServer.shared
+
     override init() {
         super.init()
         checkAuthorization()
@@ -100,6 +103,9 @@ final class CameraManager: NSObject, ObservableObject {
 
         setupCaptureSession(with: device)
 
+        // Start virtual camera server
+        virtualCameraServer.start()
+
         videoQueue.async { [weak self] in
             self?.captureSession?.startRunning()
             DispatchQueue.main.async {
@@ -109,6 +115,9 @@ final class CameraManager: NSObject, ObservableObject {
     }
 
     func stopCapture() {
+        // Stop virtual camera server
+        virtualCameraServer.stop()
+
         videoQueue.async { [weak self] in
             self?.captureSession?.stopRunning()
             DispatchQueue.main.async {
@@ -288,6 +297,9 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
 
         // Process frame
         let processedCIImage = frameProcessor.process(ciImage)
+
+        // Send to virtual camera server
+        virtualCameraServer.sendFrame(processedCIImage)
 
         // Convert to NSImage for preview
         let context = CIContext()

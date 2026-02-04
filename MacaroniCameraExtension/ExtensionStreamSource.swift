@@ -3,6 +3,8 @@ import CoreMediaIO
 import IOKit
 import os.log
 
+private let logger = Logger(subsystem: "com.macaroni.camera", category: "stream")
+
 /// Provides the video stream for the virtual camera
 class MacaroniStreamSource: NSObject, CMIOExtensionStreamSource {
 
@@ -16,10 +18,11 @@ class MacaroniStreamSource: NSObject, CMIOExtensionStreamSource {
     private var sequenceNumber: UInt64 = 0
     private var isStreaming = false
 
-    // Connection to main app for frame data
-    private var frameConnection: NSXPCConnection?
+    // Frame receiver for getting frames from main app
+    private let frameReceiver = FrameReceiver.shared
 
-    private let logger = Logger(subsystem: "com.macaroni.camera", category: "stream")
+    // Track frame changes
+    private var lastFrameCounter: UInt32 = 0
 
     init(localizedName: String, streamID: UUID, streamFormat: CMIOExtensionStreamFormat, device: CMIOExtensionDevice) {
         self.streamFormat = streamFormat
@@ -33,10 +36,19 @@ class MacaroniStreamSource: NSObject, CMIOExtensionStreamSource {
             clockType: .hostTime,
             source: self
         )
+
+        // Connect to main app
+        frameReceiver.connect()
+
+        // Set up frame callback
+        frameReceiver.onFrameReady = { [weak self] surfaceIndex in
+            // Frame is ready - will be picked up on next timer tick
+        }
     }
 
     deinit {
         stopStreaming()
+        frameReceiver.disconnect()
     }
 
     // MARK: - CMIOExtensionStreamSource
@@ -88,8 +100,14 @@ class MacaroniStreamSource: NSObject, CMIOExtensionStreamSource {
         guard !isStreaming else { return }
 
         isStreaming = true
+
+        // Try to reconnect if not connected
+        if !frameReceiver.isConnected {
+            frameReceiver.connect()
+        }
+
         startFrameGeneration()
-        logger.info("Stream started")
+        logger.info("Stream started, connected to main app: \(self.frameReceiver.isConnected)")
     }
 
     func stopStream() throws {
@@ -121,25 +139,19 @@ class MacaroniStreamSource: NSObject, CMIOExtensionStreamSource {
     private func generateAndSendFrame() {
         guard isStreaming else { return }
 
-        // Try to get frame from main app via IPC
-        if let pixelBuffer = getFrameFromMainApp() {
+        // Try to get frame from main app
+        if frameReceiver.isConnected, let pixelBuffer = frameReceiver.getLatestFrame() {
+            let currentCounter = frameReceiver.getFrameCounter()
+
+            // Only send if frame changed (or send anyway for smooth output)
             sendFrame(pixelBuffer)
+            lastFrameCounter = currentCounter
         } else {
-            // Generate placeholder frame
+            // Generate placeholder frame when main app not connected
             if let placeholderBuffer = createPlaceholderFrame() {
                 sendFrame(placeholderBuffer)
             }
         }
-    }
-
-    private func getFrameFromMainApp() -> CVPixelBuffer? {
-        // In a full implementation, this would:
-        // 1. Connect to main app via XPC/IPC
-        // 2. Request the latest processed frame
-        // 3. Return the frame data
-
-        // For now, return nil to use placeholder
-        return nil
     }
 
     private func sendFrame(_ pixelBuffer: CVPixelBuffer) {
@@ -215,7 +227,6 @@ class MacaroniStreamSource: NSObject, CMIOExtensionStreamSource {
             return nil
         }
 
-        // Fill with a pattern (dark gray with Macaroni text)
         CVPixelBufferLockBaseAddress(buffer, [])
         defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
 
@@ -224,31 +235,92 @@ class MacaroniStreamSource: NSObject, CMIOExtensionStreamSource {
         }
 
         let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
-
-        // Fill with dark gray
-        let gray: UInt32 = 0xFF303030  // BGRA: Gray
         let pixelData = baseAddress.assumingMemoryBound(to: UInt32.self)
+
+        // Fill with dark gray background
+        let bgColor: UInt32 = 0xFF1a1a1a  // BGRA: Dark gray
 
         for y in 0..<height {
             for x in 0..<width {
                 let offset = y * (bytesPerRow / 4) + x
-                pixelData[offset] = gray
+                pixelData[offset] = bgColor
             }
         }
 
-        // Draw a simple pattern (gradient bars)
-        let barHeight = height / 8
-        let colors: [UInt32] = [
-            0xFF404040, 0xFF505050, 0xFF606060, 0xFF707070,
-            0xFF606060, 0xFF505050, 0xFF404040, 0xFF303030
-        ]
+        // Draw "Macaroni Camera" text area (centered box)
+        let boxWidth = 400
+        let boxHeight = 100
+        let boxX = (width - boxWidth) / 2
+        let boxY = (height - boxHeight) / 2
+        let boxColor: UInt32 = 0xFF2d2d2d  // Slightly lighter gray
 
-        for (index, color) in colors.enumerated() {
-            let startY = index * barHeight
-            for y in startY..<min(startY + barHeight, height) {
-                for x in 0..<width {
-                    let offset = y * (bytesPerRow / 4) + x
-                    pixelData[offset] = color
+        for y in boxY..<(boxY + boxHeight) {
+            for x in boxX..<(boxX + boxWidth) {
+                let offset = y * (bytesPerRow / 4) + x
+                pixelData[offset] = boxColor
+            }
+        }
+
+        // Draw border around box
+        let borderColor: UInt32 = 0xFF4a9eff  // Blue accent
+        let borderWidth = 2
+
+        // Top and bottom borders
+        for x in boxX..<(boxX + boxWidth) {
+            for b in 0..<borderWidth {
+                let topOffset = (boxY + b) * (bytesPerRow / 4) + x
+                let bottomOffset = (boxY + boxHeight - 1 - b) * (bytesPerRow / 4) + x
+                pixelData[topOffset] = borderColor
+                pixelData[bottomOffset] = borderColor
+            }
+        }
+
+        // Left and right borders
+        for y in boxY..<(boxY + boxHeight) {
+            for b in 0..<borderWidth {
+                let leftOffset = y * (bytesPerRow / 4) + (boxX + b)
+                let rightOffset = y * (bytesPerRow / 4) + (boxX + boxWidth - 1 - b)
+                pixelData[leftOffset] = borderColor
+                pixelData[rightOffset] = borderColor
+            }
+        }
+
+        // Draw simple "M" icon in center
+        let iconSize = 40
+        let iconX = (width - iconSize) / 2
+        let iconY = (height - iconSize) / 2
+        let iconColor: UInt32 = 0xFFffffff  // White
+
+        // Draw M shape
+        for y in 0..<iconSize {
+            // Left leg
+            for x in 0..<6 {
+                let offset = (iconY + y) * (bytesPerRow / 4) + (iconX + x)
+                pixelData[offset] = iconColor
+            }
+            // Right leg
+            for x in (iconSize - 6)..<iconSize {
+                let offset = (iconY + y) * (bytesPerRow / 4) + (iconX + x)
+                pixelData[offset] = iconColor
+            }
+            // Left diagonal (top half)
+            if y < iconSize / 2 {
+                let diagX = iconX + 6 + y / 2
+                for dx in 0..<4 {
+                    let offset = (iconY + y) * (bytesPerRow / 4) + diagX + dx
+                    if diagX + dx < iconX + iconSize {
+                        pixelData[offset] = iconColor
+                    }
+                }
+            }
+            // Right diagonal (top half)
+            if y < iconSize / 2 {
+                let diagX = iconX + iconSize - 10 - y / 2
+                for dx in 0..<4 {
+                    let offset = (iconY + y) * (bytesPerRow / 4) + diagX + dx
+                    if diagX + dx > iconX {
+                        pixelData[offset] = iconColor
+                    }
                 }
             }
         }

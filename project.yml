@@ -13,6 +13,8 @@ settings:
     SWIFT_VERSION: "5.9"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     DEVELOPMENT_TEAM: "43QM98RMK6"
+    CODE_SIGN_IDENTITY: "Apple Development"
+    CODE_SIGN_STYLE: Automatic
 
 packages:
   KeyboardShortcuts:
@@ -42,6 +44,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.macaroni.app
         INFOPLIST_FILE: Macaroni/App/Info.plist
         CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: "43QM98RMK6"
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_ENTITLEMENTS: Macaroni/Macaroni.entitlements
         SWIFT_OBJC_BRIDGING_HEADER: Macaroni/Macaroni-Bridging-Header.h
@@ -63,21 +66,15 @@ targets:
       - target: MacaroniAudioProxy
         embed: true
         codeSign: true
-      # System extensions - uncomment when SIP is disabled for testing
-      # - target: MacaroniCameraExtension
-      #   embed: true
-      #   codeSign: true
-      # - target: MacaroniAudioExtension
-      #   embed: true
-      #   codeSign: true
+      - target: MacaroniCameraExtension
+        embed: true
+        codeSign: true
     entitlements:
       path: Macaroni/Macaroni.entitlements
       properties:
         com.apple.security.app-sandbox: false
         com.apple.security.device.camera: true
-        com.apple.security.personal-information.location: true
-        # Uncomment when SIP is disabled
-        # com.apple.developer.system-extension.install: true
+        com.apple.developer.system-extension.install: true
 
   MacaroniCameraExtension:
     type: system-extension
@@ -87,8 +84,11 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.macaroni.app.camera-extension
+        PRODUCT_NAME: com.macaroni.app.camera-extension
         INFOPLIST_FILE: MacaroniCameraExtension/Info.plist
         CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: "43QM98RMK6"
+        CODE_SIGN_ENTITLEMENTS: MacaroniCameraExtension/MacaroniCameraExtension.entitlements
         ENABLE_HARDENED_RUNTIME: YES
         SKIP_INSTALL: YES
 
@@ -169,9 +169,7 @@ schemes:
     build:
       targets:
         Macaroni: all
-        # Uncomment when SIP is disabled
-        # MacaroniCameraExtension: all
-        # MacaroniAudioExtension: all
+        MacaroniCameraExtension: all
     run:
       config: Debug
     test:

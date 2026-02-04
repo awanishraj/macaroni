@@ -85,6 +85,7 @@ final class SystemExtensionManager: NSObject, ObservableObject {
 
     private func activateExtension(_ type: ExtensionType) {
         logger.info("Requesting activation of extension: \(type.identifier)")
+        print("🔵 [SystemExtensionManager] Activating extension: \(type.identifier)")
 
         let request = OSSystemExtensionRequest.activationRequest(
             forExtensionWithIdentifier: type.identifier,
@@ -93,7 +94,9 @@ final class SystemExtensionManager: NSObject, ObservableObject {
         request.delegate = self
         pendingRequests[type.identifier] = type
 
+        print("🔵 [SystemExtensionManager] Submitting request...")
         OSSystemExtensionManager.shared.submitRequest(request)
+        print("🔵 [SystemExtensionManager] Request submitted, setting status to activating")
 
         updateStatus(for: type, status: .activating)
     }
@@ -164,6 +167,8 @@ extension SystemExtensionManager: OSSystemExtensionRequestDelegate {
 
     func request(_ request: OSSystemExtensionRequest, didFailWithError error: Error) {
         logger.error("Extension request failed: \(request.identifier) error: \(error.localizedDescription)")
+        print("🔴 [SystemExtensionManager] Request FAILED: \(error.localizedDescription)")
+        print("🔴 [SystemExtensionManager] Error domain: \((error as NSError).domain), code: \((error as NSError).code)")
 
         guard let type = extensionType(for: request.identifier) else { return }
         pendingRequests.removeValue(forKey: request.identifier)
@@ -172,10 +177,13 @@ extension SystemExtensionManager: OSSystemExtensionRequestDelegate {
         if nsError.domain == OSSystemExtensionErrorDomain {
             switch nsError.code {
             case OSSystemExtensionError.extensionNotFound.rawValue:
+                print("🔴 [SystemExtensionManager] Extension not found in bundle")
                 updateStatus(for: type, status: .notInstalled)
             case OSSystemExtensionError.authorizationRequired.rawValue:
+                print("🔴 [SystemExtensionManager] Authorization required")
                 updateStatus(for: type, status: .needsApproval)
             default:
+                print("🔴 [SystemExtensionManager] Other error: \(nsError.code)")
                 updateStatus(for: type, status: .failed(error.localizedDescription))
             }
         } else {
