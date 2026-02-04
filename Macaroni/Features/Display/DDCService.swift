@@ -133,9 +133,15 @@ final class DDCService {
 
                             // Match to display ID
                             let externalDisplays = getExternalDisplays()
+                            logger.info("[discoverServices] External displays found: \(externalDisplays)")
+
                             if let firstExternal = externalDisplays.first, serviceCache[firstExternal] == nil {
                                 serviceCache[firstExternal] = AVServiceInfo(service: avService, displayID: firstExternal)
                                 logger.info("Cached IOAVService for display \(firstExternal)")
+                            } else if externalDisplays.isEmpty {
+                                logger.warning("[discoverServices] No external displays found to cache service!")
+                            } else {
+                                logger.info("[discoverServices] Service already cached for \(externalDisplays.first!)")
                             }
                         } else {
                             logger.error("IOAVServiceCreateWithService returned nil for \(classNameStr)")
@@ -163,14 +169,29 @@ final class DDCService {
 
     /// Get IOAVService for a display
     private func getAVService(for displayID: CGDirectDisplayID) -> IOAVServiceRef? {
+        logger.info("[getAVService] Looking for displayID: \(displayID)")
+        logger.info("[getAVService] Current cache keys: \(Array(self.serviceCache.keys))")
+
         // Check cache first
         if let cached = serviceCache[displayID] {
+            logger.info("[getAVService] Found in cache for displayID: \(displayID)")
             return cached.service
         }
 
+        logger.info("[getAVService] Not in cache, re-discovering services...")
+
         // Re-discover services if not found
         discoverServices()
-        return serviceCache[displayID]?.service
+
+        if let service = serviceCache[displayID]?.service {
+            logger.info("[getAVService] Found after re-discovery for displayID: \(displayID)")
+            return service
+        }
+
+        logger.warning("[getAVService] Still not found after re-discovery for displayID: \(displayID)")
+        logger.info("[getAVService] Available display IDs in cache: \(Array(self.serviceCache.keys))")
+
+        return nil
     }
 
     // MARK: - Public API
@@ -200,8 +221,14 @@ final class DDCService {
     /// Set brightness value on display
     @discardableResult
     func setBrightness(_ brightness: Int, for displayID: CGDirectDisplayID) -> Bool {
+        logger.info("[DDC setBrightness] displayID: \(displayID), brightness: \(brightness)")
+        logger.info("[DDC setBrightness] serviceCache keys: \(Array(self.serviceCache.keys))")
+        logger.info("[DDC setBrightness] ddcSupportCache: \(self.ddcSupportCache)")
+
         let clampedValue = max(0, min(100, brightness))
-        return writeVCPValue(displayID: displayID, code: .brightness, value: UInt16(clampedValue))
+        let result = writeVCPValue(displayID: displayID, code: .brightness, value: UInt16(clampedValue))
+        logger.info("[DDC setBrightness] writeVCPValue result: \(result)")
+        return result
     }
 
     /// Get maximum brightness value
@@ -223,11 +250,30 @@ final class DDCService {
         }
     }
 
+    /// Get the display ID that has a cached IOAVService (the REAL physical display)
+    /// This is useful when virtual displays are present, as only the physical display
+    /// will have an IOAVService
+    func getPhysicalDisplayWithDDC() -> CGDirectDisplayID? {
+        // First ensure we've discovered services
+        if serviceCache.isEmpty {
+            discoverServices()
+        }
+
+        logger.info("[getPhysicalDisplayWithDDC] serviceCache keys: \(Array(self.serviceCache.keys))")
+
+        // Return the first display ID that has a cached service
+        return serviceCache.keys.first
+    }
+
     /// Clear caches (call when display configuration changes)
     func clearCaches() {
+        logger.info("[clearCaches] Clearing DDC caches...")
+        logger.info("[clearCaches] Before clear - serviceCache keys: \(Array(self.serviceCache.keys))")
         ddcSupportCache.removeAll()
         serviceCache.removeAll()
+        logger.info("[clearCaches] Cache cleared, re-discovering services...")
         discoverServices()
+        logger.info("[clearCaches] After discovery - serviceCache keys: \(Array(self.serviceCache.keys))")
     }
 
     // MARK: - DDC/CI Protocol Implementation

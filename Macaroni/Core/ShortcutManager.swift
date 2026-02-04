@@ -21,7 +21,20 @@ extension KeyboardShortcuts.Name {
 final class ShortcutManager {
     static let shared = ShortcutManager()
 
-    private init() {}
+    private init() {
+        setupDefaultShortcuts()
+    }
+
+    /// Set default shortcuts (only if not already configured by user)
+    private func setupDefaultShortcuts() {
+        // Brightness: Ctrl + = (up), Ctrl + - (down)
+        if KeyboardShortcuts.getShortcut(for: .brightnessUp) == nil {
+            KeyboardShortcuts.setShortcut(.init(.equal, modifiers: .control), for: .brightnessUp)
+        }
+        if KeyboardShortcuts.getShortcut(for: .brightnessDown) == nil {
+            KeyboardShortcuts.setShortcut(.init(.minus, modifiers: .control), for: .brightnessDown)
+        }
+    }
 
     func registerShortcuts() {
         // Display shortcuts
