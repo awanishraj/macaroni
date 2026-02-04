@@ -1,6 +1,6 @@
 # Macaroni - Development Progress
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 
 ## Vision
 
@@ -25,13 +25,14 @@ The goal is to replace multiple single-purpose utilities with one cohesive, nati
 | Resolution switching | ✅ Complete | Shows HiDPI + native modes only |
 | HiDPI labels | ✅ Complete | Shows HiDPI/Native/Scaled indicators |
 | Keyboard shortcuts | ✅ Complete | Brightness up/down configurable |
-| **Crisp HiDPI scaling** | ⚠️ Implemented | Via CGVirtualDisplay API, needs testing |
+| **Crisp HiDPI scaling** | ✅ Complete | Via CGVirtualDisplay API, brightness fix applied |
 
 **Crisp HiDPI Scaling:** Implemented using the private `CGVirtualDisplay` API to create virtual displays for crisp text rendering on external monitors. Features:
 - Creates virtual display at 2x resolution (e.g., 3840x2160 for 1080p HiDPI)
 - Mirrors virtual display to physical display
 - macOS performs supersampling for crisp text
-- Supports 1080p, 1200p, and 1440p HiDPI modes
+- Supports 576p through 1440p HiDPI modes (aspect-ratio aware)
+- DDC brightness control works correctly during mirroring (uses physical display ID from IOAVService cache)
 - Limitations: 60Hz max, no HDR/HDCP support
 
 Files added:
@@ -49,8 +50,8 @@ Files added:
 | Volume slider | ✅ Complete | Real-time percentage display |
 | Mute toggle | ✅ Complete | Visual feedback in UI |
 | Keyboard shortcuts | ✅ Complete | Volume up/down/mute |
-| Device selection | ⚠️ Partial | UI present, needs testing |
-| **Virtual audio device** | ❌ Not started | Would require DriverKit audio extension |
+| Device selection | ✅ Complete | Dropdown menu with volume capability indicator |
+| **Software volume proxy** | ✅ Complete | HAL plugin (proxy-audio-device) for monitors without volume control |
 
 ---
 
@@ -129,19 +130,16 @@ Macaroni.app
 
 1. **Camera extension not functional** - Needs signing, entitlements, frame passing
 2. **Keyboard shortcuts window** - Currently just a placeholder button
-3. **Display device selection** - Works but UI could be cleaner
-4. **Frame overlays** - Code ready but no bundled PNG frames
-5. **HiDPI virtual display** - Implemented, needs real-world testing on 1440p monitors
+3. **Frame overlays** - Code ready but no bundled PNG frames
 
 ---
 
 ## Next Steps (Priority Order)
 
 1. **Virtual Camera** - Get CMIOExtension working for video call apps
-2. **Test HiDPI Scaling** - Verify CGVirtualDisplay works on actual 1440p external monitors
-3. **Keyboard Shortcuts Window** - Proper settings window for configuring hotkeys
-4. **Frame Overlays** - Bundle artistic frames for camera preview
-5. **Polish & Release** - DMG packaging, notarization, GitHub release
+2. **Keyboard Shortcuts Window** - Proper settings window for configuring hotkeys
+3. **Frame Overlays** - Bundle artistic frames for camera preview
+4. **Polish & Release** - DMG packaging, notarization, GitHub release
 
 ---
 
