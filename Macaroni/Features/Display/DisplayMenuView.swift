@@ -145,7 +145,7 @@ struct DisplayMenuView: View {
                     let index = Int(resolutionIndex.rounded())
                     let safeIndex = min(max(index, 0), resolutions.count - 1)
                     let res = resolutions[safeIndex]
-                    Text("\(res.width)x\(res.height)")
+                    Text("\(String(res.width))x\(String(res.height))")
                         .font(.system(size: 12, weight: .regular))
                         .foregroundColor(.secondary)
                         .monospacedDigit()
