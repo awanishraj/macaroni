@@ -16,9 +16,9 @@
 
 ---
 
-## What is Macaroni?
+A **free, open-source macOS menubar utility** that combines the functionality of five separate apps into one lightweight, native application:
 
-Macaroni is a **free, open-source macOS menubar utility** that combines the functionality of five separate apps into one lightweight, native application:
+![Macaroni Menu](Screenshots/Menu.png)
 
 | Instead of... | You get... |
 |---------------|------------|
@@ -43,7 +43,7 @@ Control your external monitor's brightness with a slider or keyboard shortcut �
 - Brightness slider with keyboard shortcuts (`Ctrl+=` / `Ctrl+-`)
 - **Auto brightness** — uses your location to follow sunrise and sunset, dimming at night and brightening during the day, hands-free
 - Crisp HiDPI scaling for sharp text on external displays
-- Resolution stepping with `Ctrl+Shift+=` / `Ctrl+Shift+-` — you know how you zoom in and out of a browser? Now you can do the same thing for your Mac's entire resolution
+- Resolution scaling with `Ctrl+Shift+=` / `Ctrl+Shift+-` — you know how you zoom in and out of a browser? Now you can do the same thing for your Mac's entire display
 
 <br clear="right"/>
 
@@ -93,28 +93,24 @@ macOS prioritizes silence over cooling. Macaroni lets you set a custom fan curve
 
 ---
 
-### ⚙️ Settings
+### ⚙️ Customization
 
 <img src="Screenshots/Settings.png" width="350" align="right" alt="Settings">
 
 Choose what lives in your menubar — the Macaroni icon, a dynamic volume indicator, or the current CPU temperature. Launch at login with one click.
 
-<br clear="right"/>
-
----
-
-### ⌨️ Keyboard Shortcuts
-
-Everything important is one shortcut away. No menus, no clicking.
+Everything important is one shortcut away — no menus, no clicking:
 
 | Action | Shortcut |
 |--------|----------|
 | Brightness up | `Ctrl` + `=` |
 | Brightness down | `Ctrl` + `-` |
-| Resolution up | `Ctrl` + `Shift` + `=` |
-| Resolution down | `Ctrl` + `Shift` + `-` |
+| Scale up (bigger) | `Ctrl` + `Shift` + `=` |
+| Scale down (smaller) | `Ctrl` + `Shift` + `-` |
 
-All shortcuts are customizable in Settings.
+All shortcuts are customizable.
+
+<br clear="right"/>
 
 ---
 
@@ -161,9 +157,8 @@ Fan control requires installing a privileged helper:
 3. Enter your password when prompted
 4. The helper runs as a LaunchDaemon with minimal privileges
 
----
-
-## Architecture
+<details>
+<summary><strong>Architecture</strong></summary>
 
 ```
 Macaroni.app
@@ -180,23 +175,20 @@ Macaroni.app
     └── Virtual camera with sink/source streams
 ```
 
----
+</details>
 
-## How It Works
+<details>
+<summary><strong>How It Works</strong></summary>
 
-### Display Brightness
-Communicates directly with your monitor's hardware using the DDC/CI protocol (the same way your monitor's own buttons work). This means real brightness adjustment—not a software overlay that washes out colors.
+**Display Brightness** — Communicates directly with your monitor's hardware using the DDC/CI protocol (the same way your monitor's own buttons work). This means real brightness adjustment—not a software overlay that washes out colors.
 
-### Virtual Camera
-Creates a system-level virtual camera that appears in any app's camera selection. Macaroni captures your real camera, applies your chosen transforms, and outputs the result as "Macaroni Camera".
+**Virtual Camera** — Creates a system-level virtual camera that appears in any app's camera selection. Macaroni captures your real camera, applies your chosen transforms, and outputs the result as "Macaroni Camera".
 
-### Fan Control
-Uses a privileged helper to communicate directly with your Mac's fan controller. You can set custom temperature triggers or manually control fan speed when you need extra cooling.
+**Fan Control** — Uses a privileged helper to communicate directly with your Mac's fan controller. You can set custom temperature triggers or manually control fan speed when you need extra cooling.
 
-### Temperature Reading
-Reads your Mac's thermal sensors and reports the CPU temperature in real-time. Works on all Apple Silicon Macs (M1 through M4).
+**Temperature Reading** — Reads your Mac's thermal sensors and reports the CPU temperature in real-time. Works on all Apple Silicon Macs (M1 through M4).
 
----
+</details>
 
 ## Dependencies
 
@@ -218,13 +210,12 @@ Macaroni was built by studying and learning from these excellent open-source pro
 - [OBS Studio](https://github.com/obsproject/obs-studio) - Virtual camera architecture
 - [Stats](https://github.com/exelban/stats) - Temperature and fan monitoring
 
----
-
-## SIP Configuration (Apple Silicon)
+<details>
+<summary><strong>SIP Configuration (Apple Silicon)</strong></summary>
 
 Some features require reduced System Integrity Protection. This is a one-time setup.
 
-### Part A: Recovery Mode
+**Part A: Recovery Mode**
 
 1. **Shut down** your Mac completely (Apple menu → Shut Down)
 2. **Enter Recovery Mode**: Press and hold Power button until "Loading startup options" appears
@@ -242,7 +233,7 @@ Some features require reduced System Integrity Protection. This is a one-time se
    ```
 7. **Restart**: Type `reboot` and press Enter
 
-### Part B: After Reboot
+**Part B: After Reboot**
 
 8. Open Terminal (Applications → Utilities → Terminal)
 9. Enable system extension developer mode:
@@ -251,7 +242,7 @@ Some features require reduced System Integrity Protection. This is a one-time se
    ```
 10. Verify with `csrutil status` — should show "enabled" with kext and debug exceptions
 
----
+</details>
 
 ## License
 

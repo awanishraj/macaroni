@@ -550,13 +550,13 @@ final class DisplayManager: ObservableObject {
 
         NotificationCenter.default.publisher(for: .resolutionUp)
             .sink { [weak self] _ in
-                self?.stepResolution(direction: 1)
+                self?.stepResolution(direction: -1)
             }
             .store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: .resolutionDown)
             .sink { [weak self] _ in
-                self?.stepResolution(direction: -1)
+                self?.stepResolution(direction: 1)
             }
             .store(in: &cancellables)
     }
