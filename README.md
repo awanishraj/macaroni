@@ -38,14 +38,12 @@ Macaroni is a **free, open-source macOS menubar utility** that combines the func
 
 <img src="Screenshots/Display.png" width="350" align="right" alt="Display Control">
 
-**The problem:** External monitors don't respond to Mac's brightness keys. You're stuck fumbling with tiny buttons on your monitor every time the lighting changes.
+Control your external monitor's brightness with a slider or keyboard shortcut — no more reaching behind the display to fumble with tiny buttons. Text looks crisp and sharp thanks to HiDPI scaling that fixes the blurry mess macOS gives most external monitors out of the box.
 
-**The solution:** Macaroni lets you control your monitor's brightness with a simple slider—no more reaching behind your display. It also makes text crisp and sharp on external monitors, fixing the blurry scaling that plagues many setups.
-
-- Adjust brightness without touching your monitor
-- Auto brightness that follows sunrise/sunset
-- Crisp, sharp text on external displays (HiDPI scaling)
-- Quick resolution switching
+- Brightness slider with keyboard shortcuts (`Ctrl+=` / `Ctrl+-`)
+- **Auto brightness** — uses your location to follow sunrise and sunset, dimming at night and brightening during the day, hands-free
+- Crisp HiDPI scaling for sharp text on external displays
+- Resolution stepping with `Ctrl+Shift+=` / `Ctrl+Shift+-` — you know how you zoom in and out of a browser? Now you can do the same thing for your Mac's entire resolution
 
 <br clear="right"/>
 
@@ -55,13 +53,11 @@ Macaroni is a **free, open-source macOS menubar utility** that combines the func
 
 <img src="Screenshots/Audio.png" width="350" align="right" alt="Audio Control">
 
-**The problem:** Monitor speakers connected via HDMI or DisplayPort ignore your Mac's volume keys. You're stuck at full blast or have to press buttons on the speaker.
+Monitor speakers over HDMI or DisplayPort ignore your Mac's volume keys. Macaroni gives you a volume slider that works with any audio device — even ones macOS normally won't let you control.
 
-**The solution:** Macaroni gives you a volume slider that works with any audio device—even ones that don't normally support software volume control.
-
-- Volume slider that works with any output device
-- Quick device switching
-- Dynamic menubar icon showing current volume level
+- Volume slider for any output device, including stubborn HDMI/DP speakers
+- Quick device switching between outputs
+- Dynamic menubar icon that reflects current volume level
 - Mute toggle
 
 <br clear="right"/>
@@ -72,13 +68,11 @@ Macaroni is a **free, open-source macOS menubar utility** that combines the func
 
 <img src="Screenshots/Camera.png" width="350" align="right" alt="Camera">
 
-**The problem:** You want to check how you look before joining a video call, but that means opening Photo Booth. And if you want to flip or rotate your camera, you need OBS.
+One click in your menubar shows a live camera preview — quick hair check before a call, no Photo Booth required. Macaroni also creates a virtual camera that Zoom, Meet, FaceTime, and any other app can see, with rotation and flip built in.
 
-**The solution:** One click in your menubar shows a live camera preview. Macaroni also creates a virtual camera that any app can use—Zoom, Meet, FaceTime—with rotation and flip built right in.
-
-- Quick camera check from the menubar
-- Virtual camera output works in any video app
-- Rotate and flip your camera feed
+- Instant camera preview from the menubar
+- Virtual camera output visible to all video apps
+- Rotate and flip your camera feed on the fly
 
 <br clear="right"/>
 
@@ -88,14 +82,11 @@ Macaroni is a **free, open-source macOS menubar utility** that combines the func
 
 <img src="Screenshots/Fans.png" width="350" align="right" alt="Fan Control">
 
-**The problem:** Mac Mini runs hot under load, and macOS's conservative fan curves prioritize silence over cooling.
+macOS prioritizes silence over cooling. Macaroni lets you set a custom fan curve so your Mac stays cool during heavy workloads instead of thermal throttling in silence.
 
-**The solution:** Macaroni reads CPU temperature in real-time and lets you set a custom fan curve with your preferred trigger temperature. Keep your Mac cool during heavy workloads.
-
-- Real-time CPU temperature monitoring
-- Custom fan curves with configurable trigger
-- Manual RPM control via slider
-- Animated fan icon showing current speed
+- Real-time CPU temperature in your menubar
+- Custom fan curves with configurable trigger temperature
+- Manual RPM override via slider
 - Full M1/M2/M3/M4 support
 
 <br clear="right"/>
@@ -106,13 +97,24 @@ Macaroni is a **free, open-source macOS menubar utility** that combines the func
 
 <img src="Screenshots/Settings.png" width="350" align="right" alt="Settings">
 
-**Simple, focused settings.** Choose what to show in your menubar: the Macaroni icon, a dynamic volume indicator, or the current CPU temperature. Enable launch at login with one click.
-
-- Menu icon picker (logo, volume, or temperature)
-- Launch at Login toggle
-- Quit Macaroni
+Choose what lives in your menubar — the Macaroni icon, a dynamic volume indicator, or the current CPU temperature. Launch at login with one click.
 
 <br clear="right"/>
+
+---
+
+### ⌨️ Keyboard Shortcuts
+
+Everything important is one shortcut away. No menus, no clicking.
+
+| Action | Shortcut |
+|--------|----------|
+| Brightness up | `Ctrl` + `=` |
+| Brightness down | `Ctrl` + `-` |
+| Resolution up | `Ctrl` + `Shift` + `=` |
+| Resolution down | `Ctrl` + `Shift` + `-` |
+
+All shortcuts are customizable in Settings.
 
 ---
 

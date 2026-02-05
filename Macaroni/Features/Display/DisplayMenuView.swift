@@ -133,7 +133,7 @@ struct DisplayMenuView: View {
     // MARK: - Resolution Section
 
     private func resolutionSection(for display: Display) -> some View {
-        let resolutions = availableResolutions(for: display)
+        let resolutions = displayManager.availableResolutions(for: display)
 
         return VStack(alignment: .leading, spacing: 8) {
             // Header - show current resolution
@@ -184,13 +184,13 @@ struct DisplayMenuView: View {
                 // Resolution labels
                 HStack {
                     if let smallest = resolutions.first {
-                        Text("\(smallest.height)p")
+                        Text("\(String(smallest.height))p")
                             .font(.system(size: 9))
                             .foregroundColor(.secondary.opacity(0.6))
                     }
                     Spacer()
                     if let largest = resolutions.last {
-                        Text("\(largest.height)p")
+                        Text("\(String(largest.height))p")
                             .font(.system(size: 9))
                             .foregroundColor(.secondary.opacity(0.6))
                     }
@@ -201,112 +201,11 @@ struct DisplayMenuView: View {
 
     // MARK: - Helpers
 
-    /// Get available resolutions for a display
-    /// For external displays, offers virtual resolutions for crisp HiDPI scaling
-    /// Only includes resolutions matching the display's native aspect ratio
-    private func availableResolutions(for display: Display) -> [ResolutionOption] {
-        var resolutions: [ResolutionOption] = []
-
-        // Get native panel resolution (highest non-HiDPI mode where pixels = logical)
-        let maxNativeMode = display.availableModes
-            .filter { !$0.isHiDPI && $0.width == $0.pixelWidth }
-            .max { $0.width * $0.height < $1.width * $1.height }
-
-        // Determine native aspect ratio
-        let nativeAspect: Double
-        if let native = maxNativeMode {
-            nativeAspect = Double(native.width) / Double(native.height)
-        } else {
-            nativeAspect = 16.0 / 9.0  // Default to 16:9
-        }
-
-        // Helper to check if resolution matches aspect ratio (within 2% tolerance)
-        func matchesAspect(_ width: Int, _ height: Int) -> Bool {
-            let aspect = Double(width) / Double(height)
-            return abs(aspect - nativeAspect) / nativeAspect < 0.02
-        }
-
-        // Minimum resolution height (576p - close to 600p, clean 16:9)
-        let minHeight = 576
-
-        // For external displays, add virtual resolutions for crisp scaling
-        if !display.isBuiltIn {
-            // Generate resolutions matching the display's aspect ratio
-            // For 16:9: width = height * 16/9
-            // For 16:10: width = height * 16/10
-
-            let virtualOptions: [(Int, Int)]
-
-            // Check if display is 16:9 or 16:10 (within tolerance)
-            let is16by9 = abs(nativeAspect - 16.0/9.0) < 0.02
-            let is16by10 = abs(nativeAspect - 16.0/10.0) < 0.02
-
-            if is16by9 {
-                // 16:9 resolutions from 576p to 1440p
-                virtualOptions = [
-                    (1024, 576),   // 576p
-                    (1152, 648),   // 648p
-                    (1280, 720),   // 720p HD
-                    (1366, 768),   // 768p (common laptop)
-                    (1600, 900),   // 900p HD+
-                    (1792, 1008),  // 1008p
-                    (1920, 1080),  // 1080p Full HD
-                    (2048, 1152),  // 1152p
-                    (2560, 1440),  // 1440p QHD
-                ]
-            } else if is16by10 {
-                // 16:10 resolutions
-                virtualOptions = [
-                    (1280, 800),   // WXGA
-                    (1440, 900),   // WXGA+
-                    (1680, 1050),  // WSXGA+
-                    (1920, 1200),  // WUXGA
-                    (2560, 1600),  // WQXGA
-                ]
-            } else {
-                // Fallback to common resolutions
-                virtualOptions = [
-                    (1280, 720),
-                    (1600, 900),
-                    (1920, 1080),
-                ]
-            }
-
-            for (w, h) in virtualOptions {
-                // Only add if meets minimum height
-                guard h >= minHeight else { continue }
-                // Don't add if it matches native resolution exactly (will add native below)
-                if let native = maxNativeMode, native.width == w && native.height == h {
-                    continue
-                }
-                resolutions.append(ResolutionOption(width: w, height: h, isVirtual: true, nativeMode: nil))
-            }
-        }
-
-        // Add native HiDPI modes that match aspect ratio and minimum height
-        for mode in display.availableModes.filter({ $0.isHiDPI }) {
-            guard matchesAspect(mode.width, mode.height) && mode.height >= minHeight else { continue }
-            if !resolutions.contains(where: { $0.width == mode.width && $0.height == mode.height }) {
-                resolutions.append(ResolutionOption(width: mode.width, height: mode.height, isVirtual: false, nativeMode: mode))
-            }
-        }
-
-        // Add native panel resolution (1:1 pixel mapping - always sharp)
-        if let native = maxNativeMode {
-            if !resolutions.contains(where: { $0.width == native.width && $0.height == native.height }) {
-                resolutions.append(ResolutionOption(width: native.width, height: native.height, isVirtual: false, nativeMode: native))
-            }
-        }
-
-        // Sort by height (smallest first)
-        return resolutions.sorted { $0.height < $1.height }
-    }
-
     private func updateResolutionIndex() {
         guard let display = displayManager.selectedDisplay else { return }
         guard !isEditingResolution else { return }
 
-        let resolutions = availableResolutions(for: display)
+        let resolutions = displayManager.availableResolutions(for: display)
         guard !resolutions.isEmpty else {
             resolutionIndex = 0
             return

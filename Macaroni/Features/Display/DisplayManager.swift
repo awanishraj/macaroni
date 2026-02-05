@@ -398,6 +398,141 @@ final class DisplayManager: ObservableObject {
         virtualDisplayService.resolution
     }
 
+    // MARK: - Resolution Helpers
+
+    /// Get available resolutions for a display
+    /// For external displays, offers virtual resolutions for crisp HiDPI scaling
+    /// Only includes resolutions matching the display's native aspect ratio
+    func availableResolutions(for display: Display) -> [ResolutionOption] {
+        var resolutions: [ResolutionOption] = []
+
+        // Get native panel resolution (highest non-HiDPI mode where pixels = logical)
+        let maxNativeMode = display.availableModes
+            .filter { !$0.isHiDPI && $0.width == $0.pixelWidth }
+            .max { $0.width * $0.height < $1.width * $1.height }
+
+        // Determine native aspect ratio
+        let nativeAspect: Double
+        if let native = maxNativeMode {
+            nativeAspect = Double(native.width) / Double(native.height)
+        } else {
+            nativeAspect = 16.0 / 9.0  // Default to 16:9
+        }
+
+        // Helper to check if resolution matches aspect ratio (within 2% tolerance)
+        func matchesAspect(_ width: Int, _ height: Int) -> Bool {
+            let aspect = Double(width) / Double(height)
+            return abs(aspect - nativeAspect) / nativeAspect < 0.02
+        }
+
+        // Minimum resolution height (576p - close to 600p, clean 16:9)
+        let minHeight = 576
+
+        // For external displays, add virtual resolutions for crisp scaling
+        if !display.isBuiltIn {
+            let virtualOptions: [(Int, Int)]
+
+            let is16by9 = abs(nativeAspect - 16.0/9.0) < 0.02
+            let is16by10 = abs(nativeAspect - 16.0/10.0) < 0.02
+
+            if is16by9 {
+                virtualOptions = [
+                    (1024, 576),
+                    (1152, 648),
+                    (1280, 720),
+                    (1366, 768),
+                    (1600, 900),
+                    (1792, 1008),
+                    (1920, 1080),
+                    (2048, 1152),
+                    (2560, 1440),
+                ]
+            } else if is16by10 {
+                virtualOptions = [
+                    (1280, 800),
+                    (1440, 900),
+                    (1680, 1050),
+                    (1920, 1200),
+                    (2560, 1600),
+                ]
+            } else {
+                virtualOptions = [
+                    (1280, 720),
+                    (1600, 900),
+                    (1920, 1080),
+                ]
+            }
+
+            for (w, h) in virtualOptions {
+                guard h >= minHeight else { continue }
+                if let native = maxNativeMode, native.width == w && native.height == h {
+                    continue
+                }
+                resolutions.append(ResolutionOption(width: w, height: h, isVirtual: true, nativeMode: nil))
+            }
+        }
+
+        // Add native HiDPI modes that match aspect ratio and minimum height
+        for mode in display.availableModes.filter({ $0.isHiDPI }) {
+            guard matchesAspect(mode.width, mode.height) && mode.height >= minHeight else { continue }
+            if !resolutions.contains(where: { $0.width == mode.width && $0.height == mode.height }) {
+                resolutions.append(ResolutionOption(width: mode.width, height: mode.height, isVirtual: false, nativeMode: mode))
+            }
+        }
+
+        // Add native panel resolution (1:1 pixel mapping - always sharp)
+        if let native = maxNativeMode {
+            if !resolutions.contains(where: { $0.width == native.width && $0.height == native.height }) {
+                resolutions.append(ResolutionOption(width: native.width, height: native.height, isVirtual: false, nativeMode: native))
+            }
+        }
+
+        // Sort by height (smallest first)
+        return resolutions.sorted { $0.height < $1.height }
+    }
+
+    /// Step resolution up (+1) or down (-1) through the available resolutions list
+    func stepResolution(direction: Int) {
+        guard let display = selectedDisplay else { return }
+
+        let resolutions = availableResolutions(for: display)
+        guard !resolutions.isEmpty else { return }
+
+        // Determine current resolution
+        let currentWidth: Int
+        let currentHeight: Int
+
+        if crispHiDPIActive, let virtualRes = currentVirtualResolution {
+            currentWidth = virtualRes.logicalWidth
+            currentHeight = virtualRes.logicalHeight
+        } else if let currentMode = display.currentMode {
+            currentWidth = currentMode.width
+            currentHeight = currentMode.height
+        } else {
+            return
+        }
+
+        // Find current index
+        let currentIndex: Int
+        if let index = resolutions.firstIndex(where: { $0.width == currentWidth && $0.height == currentHeight }) {
+            currentIndex = index
+        } else {
+            // Find closest by area
+            let currentArea = currentWidth * currentHeight
+            currentIndex = resolutions.enumerated().min(by: {
+                abs($0.element.width * $0.element.height - currentArea) <
+                abs($1.element.width * $1.element.height - currentArea)
+            })?.offset ?? 0
+        }
+
+        // Step and clamp
+        let newIndex = min(max(currentIndex + direction, 0), resolutions.count - 1)
+        guard newIndex != currentIndex else { return }
+
+        let selectedRes = resolutions[newIndex]
+        setResolutionOption(selectedRes, for: display)
+    }
+
     // MARK: - Shortcut Handlers
 
     private func setupShortcutHandlers() {
@@ -413,30 +548,21 @@ final class DisplayManager: ObservableObject {
             }
             .store(in: &cancellables)
 
-        NotificationCenter.default.publisher(for: .toggleResolution)
+        NotificationCenter.default.publisher(for: .resolutionUp)
             .sink { [weak self] _ in
-                self?.cycleResolution()
+                self?.stepResolution(direction: 1)
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .resolutionDown)
+            .sink { [weak self] _ in
+                self?.stepResolution(direction: -1)
             }
             .store(in: &cancellables)
     }
 
     private func adjustBrightness(by delta: Double) {
         brightness = max(0, min(1, brightness + delta))
-    }
-
-    private func cycleResolution() {
-        guard let display = selectedDisplay else { return }
-
-        let hidpiModes = getHiDPIModes(for: display)
-        guard !hidpiModes.isEmpty else { return }
-
-        if let currentMode = display.currentMode,
-           let currentIndex = hidpiModes.firstIndex(of: currentMode) {
-            let nextIndex = (currentIndex + 1) % hidpiModes.count
-            setResolution(hidpiModes[nextIndex])
-        } else {
-            setResolution(hidpiModes[0])
-        }
     }
 
     // MARK: - Private Methods

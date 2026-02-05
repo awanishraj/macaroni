@@ -6,7 +6,8 @@ extension KeyboardShortcuts.Name {
     // Display shortcuts
     static let brightnessUp = Self("brightnessUp")
     static let brightnessDown = Self("brightnessDown")
-    static let toggleResolution = Self("toggleResolution")
+    static let resolutionUp = Self("resolutionUp")
+    static let resolutionDown = Self("resolutionDown")
 
     // Audio shortcuts
     static let volumeUp = Self("volumeUp")
@@ -34,6 +35,14 @@ final class ShortcutManager {
         if KeyboardShortcuts.getShortcut(for: .brightnessDown) == nil {
             KeyboardShortcuts.setShortcut(.init(.minus, modifiers: .control), for: .brightnessDown)
         }
+
+        // Resolution: Ctrl + Shift + = (up), Ctrl + Shift + - (down)
+        if KeyboardShortcuts.getShortcut(for: .resolutionUp) == nil {
+            KeyboardShortcuts.setShortcut(.init(.equal, modifiers: [.control, .shift]), for: .resolutionUp)
+        }
+        if KeyboardShortcuts.getShortcut(for: .resolutionDown) == nil {
+            KeyboardShortcuts.setShortcut(.init(.minus, modifiers: [.control, .shift]), for: .resolutionDown)
+        }
     }
 
     func registerShortcuts() {
@@ -46,8 +55,12 @@ final class ShortcutManager {
             self?.handleBrightnessDown()
         }
 
-        KeyboardShortcuts.onKeyUp(for: .toggleResolution) { [weak self] in
-            self?.handleToggleResolution()
+        KeyboardShortcuts.onKeyUp(for: .resolutionUp) { [weak self] in
+            self?.handleResolutionUp()
+        }
+
+        KeyboardShortcuts.onKeyUp(for: .resolutionDown) { [weak self] in
+            self?.handleResolutionDown()
         }
 
         // Audio shortcuts
@@ -83,8 +96,12 @@ final class ShortcutManager {
         NotificationCenter.default.post(name: .brightnessDown, object: nil)
     }
 
-    private func handleToggleResolution() {
-        NotificationCenter.default.post(name: .toggleResolution, object: nil)
+    private func handleResolutionUp() {
+        NotificationCenter.default.post(name: .resolutionUp, object: nil)
+    }
+
+    private func handleResolutionDown() {
+        NotificationCenter.default.post(name: .resolutionDown, object: nil)
     }
 
     // MARK: - Audio Handlers
@@ -118,7 +135,8 @@ extension Notification.Name {
     // Display notifications
     static let brightnessUp = Notification.Name("brightnessUp")
     static let brightnessDown = Notification.Name("brightnessDown")
-    static let toggleResolution = Notification.Name("toggleResolution")
+    static let resolutionUp = Notification.Name("resolutionUp")
+    static let resolutionDown = Notification.Name("resolutionDown")
 
     // Audio notifications
     static let volumeUp = Notification.Name("volumeUp")
