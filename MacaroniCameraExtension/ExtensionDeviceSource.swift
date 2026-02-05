@@ -219,7 +219,9 @@ class MacaroniDeviceSource: NSObject, CMIOExtensionDeviceSource {
             kCTForegroundColorAttributeName: textColor
         ]
 
-        let attributedString = CFAttributedStringCreate(kCFAllocatorDefault, text, attributes as CFDictionary)!
+        guard let attributedString = CFAttributedStringCreate(kCFAllocatorDefault, text, attributes as CFDictionary) else {
+            return buffer
+        }
         let line = CTLineCreateWithAttributedString(attributedString)
 
         let textBounds = CTLineGetBoundsWithOptions(line, [])

@@ -1,5 +1,8 @@
 import Foundation
 import Combine
+import os.log
+
+private let logger = Logger(subsystem: "com.macaroni.app", category: "FanCurveController")
 
 /// Fan control mode
 enum FanControlMode: String, CaseIterable, Codable {
@@ -174,18 +177,15 @@ final class FanCurveController: ObservableObject {
             connectToHelper()
         }
 
-        return helperConnection?.remoteObjectProxyWithErrorHandler { _ in
-            // XPC error occurred
+        return helperConnection?.remoteObjectProxyWithErrorHandler { error in
+            logger.error("XPC connection error: \(error.localizedDescription)")
         } as? FanHelperProtocol
     }
 
     // MARK: - SMC Fan Control
 
     private func readCurrentFanState() {
-        guard let helper = getHelperProxy() else {
-            readFanStateViaIOKit()
-            return
-        }
+        guard let helper = getHelperProxy() else { return }
 
         helper.getFanSpeed { [weak self] rpmNumber, minRPM, maxRPM in
             DispatchQueue.main.async {
@@ -222,26 +222,6 @@ final class FanCurveController: ObservableObject {
     private func disableForcedMode() {
         guard let helper = getHelperProxy() else { return }
         helper.disableForcedMode { _ in }
-    }
-
-    // MARK: - IOKit Fallback
-
-    private func readFanStateViaIOKit() {
-        var connection: io_connect_t = 0
-
-        let service = IOServiceGetMatchingService(
-            kIOMainPortDefault,
-            IOServiceMatching("AppleSMC")
-        )
-
-        guard service != 0 else { return }
-        defer { IOObjectRelease(service) }
-
-        let result = IOServiceOpen(service, mach_task_self_, 0, &connection)
-        guard result == KERN_SUCCESS else { return }
-        defer { IOServiceClose(connection) }
-
-        // Fallback SMC read not implemented - helper is preferred
     }
 
     // MARK: - Preferences

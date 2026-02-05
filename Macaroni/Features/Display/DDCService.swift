@@ -140,16 +140,6 @@ final class DDCService {
         logger.debug("Service discovery complete. Found \(foundCount) external services, cached \(self.serviceCache.count).")
     }
 
-    /// Match an IORegistry entry to a CGDisplayID using EDID
-    private func matchServiceToDisplay(entry: io_object_t) -> CGDirectDisplayID? {
-        // Try to get display info to match
-        let externalDisplays = getExternalDisplays()
-
-        // For now, return the first external display
-        // In a full implementation, match using EDID data
-        return externalDisplays.first
-    }
-
     /// Get IOAVService for a display
     private func getAVService(for displayID: CGDirectDisplayID) -> IOAVServiceRef? {
         // Check cache first

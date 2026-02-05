@@ -50,8 +50,9 @@ private class FanRotationState: ObservableObject {
 
         guard let displayLink = link else { return }
 
-        let callback: CVDisplayLinkOutputCallback = { _, inNow, _, _, _, userInfo in
-            let state = Unmanaged<FanRotationState>.fromOpaque(userInfo!).takeUnretainedValue()
+        let callback: CVDisplayLinkOutputCallback = { _, _, _, _, _, userInfo in
+            guard let userInfo = userInfo else { return kCVReturnError }
+            let state = Unmanaged<FanRotationState>.fromOpaque(userInfo).takeUnretainedValue()
             let currentTime = CFAbsoluteTimeGetCurrent()
 
             if state.lastTime > 0 {
