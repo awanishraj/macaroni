@@ -16,7 +16,7 @@ The goal is to replace multiple single-purpose utilities with one cohesive, nati
 
 ## Feature Status
 
-### Display Module
+### Display Module ✅
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -25,37 +25,32 @@ The goal is to replace multiple single-purpose utilities with one cohesive, nati
 | Resolution switching | ✅ Complete | Shows HiDPI + native modes only |
 | HiDPI labels | ✅ Complete | Shows HiDPI/Native/Scaled indicators |
 | Keyboard shortcuts | ✅ Complete | Brightness up/down configurable |
-| **Crisp HiDPI scaling** | ✅ Complete | Via CGVirtualDisplay API, brightness fix applied |
+| Crisp HiDPI scaling | ✅ Complete | Via CGVirtualDisplay API |
 
-**Crisp HiDPI Scaling:** Implemented using the private `CGVirtualDisplay` API to create virtual displays for crisp text rendering on external monitors. Features:
-- Creates virtual display at 2x resolution (e.g., 3840x2160 for 1080p HiDPI)
-- Mirrors virtual display to physical display
-- macOS performs supersampling for crisp text
-- Supports 576p through 1440p HiDPI modes (aspect-ratio aware)
-- DDC brightness control works correctly during mirroring (uses physical display ID from IOAVService cache)
-- Limitations: 60Hz max, no HDR/HDCP support
-
-Files added:
-- `CGVirtualDisplay.h` - Private API declarations
-- `VirtualDisplayService.swift` - Virtual display lifecycle
-- `DisplayMirrorService.swift` - Display mirroring control
-- Updated `DisplayMenuView.swift` with UI controls
+**Crisp HiDPI Scaling:** Implemented using the private `CGVirtualDisplay` API to create virtual displays for crisp text rendering on external monitors.
 
 ---
 
-### Audio Module
+### Audio Module ✅
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Volume slider | ✅ Complete | Real-time percentage display |
+| Volume slider | ✅ Complete | Real-time control |
 | Mute toggle | ✅ Complete | Visual feedback in UI |
 | Keyboard shortcuts | ✅ Complete | Volume up/down/mute |
-| Device selection | ✅ Complete | Dropdown menu with volume capability indicator |
-| **Software volume proxy** | ✅ Complete | HAL plugin (proxy-audio-device) for monitors without volume control |
+| Device selection | ✅ Complete | Dropdown with volume capability indicator |
+| Menu bar icon | ✅ Complete | Dynamic icon based on volume level |
+| Software volume proxy | ✅ Complete | HAL plugin for monitors without volume control |
+
+**Menu Bar Volume Icon:** Shows appropriate SF Symbol based on volume level:
+- `speaker.slash.fill` - Muted or 0%
+- `speaker.wave.1.fill` - Low volume (<33%)
+- `speaker.wave.2.fill` - Medium volume (33-66%)
+- `speaker.wave.3.fill` - High volume (>66%)
 
 ---
 
-### Camera Module
+### Camera Module ✅
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -63,10 +58,10 @@ Files added:
 | Live preview | ✅ Complete | Shows Macaroni Camera output in menu |
 | Rotation transforms | ✅ Complete | Counter-clockwise, clockwise via icons |
 | Horizontal flip | ✅ Complete | Toggle via icon button |
-| Frame overlays | ✅ Complete | Rounded corners, polaroid, neon, vintage |
-| **Virtual camera output** | ✅ Complete | CMIOExtension with sink/source streams |
-| **Placeholder frames** | ✅ Complete | Shows "Turn on camera" when camera OFF |
-| **Extension updates** | ✅ Complete | Update button + restart prompt |
+| Frame overlays | ❌ Not implemented | Future: rounded corners, polaroid, neon, vintage |
+| Virtual camera output | ✅ Complete | CMIOExtension with sink/source streams |
+| Placeholder frames | ✅ Complete | Dual text (normal + mirrored) when camera OFF |
+| Extension updates | ✅ Complete | Update button + restart prompt |
 
 **Virtual Camera Implementation:**
 - CMIOExtension with fixed UUIDs (OBS-style architecture)
@@ -74,13 +69,12 @@ Files added:
 - Source stream outputs to apps like Zoom, Photo Booth, FaceTime
 - Auto-reconnect logic for robust connection handling
 - Aspect-fill scaling (crops to fill 1920x1080 output)
-- System extension auto-detection on app launch
-- Placeholder frames with dual text (normal + mirrored) for apps that flip video
-- Seamless extension updates with restart prompt (macOS caches CMIO devices per-process)
+- Placeholder frames with dual text for apps that flip video
+- Seamless extension updates with restart prompt
 
 ---
 
-### Fan Control Module
+### Fan Control Module ✅
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -92,29 +86,28 @@ Files added:
 | Helper installation | ✅ Complete | XPC LaunchDaemon |
 | M4 Mac Mini support | ✅ Complete | Float32 format, F0Md key |
 
-**Fully functional** - Robust temperature monitoring and fan speed control.
-
 ---
 
-### Settings Module
+### Settings Module ✅
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Menubar display mode | ✅ Complete | Temp, volume, or icon only |
-| Launch at login | ✅ Complete | Via LaunchAtLogin package |
-| Keyboard shortcuts config | ⚠️ Partial | UI present, needs window |
-| About section | ✅ Complete | Minimal version footer |
+| Menu Icon picker | ✅ Complete | Icon-only segmented control (logo/volume/temp) |
+| Launch at Login | ✅ Complete | Toggle via LaunchAtLogin package |
+| Quit Macaroni | ✅ Complete | Clean app termination |
+
+**Simplified Settings UI:** Clean three-item layout with icon-based menu bar mode picker.
 
 ---
 
-### UI/UX
+### UI/UX ✅
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Menubar icon | ✅ Complete | Custom macaroni logo |
+| Menubar icon | ✅ Complete | Custom macaroni logo or dynamic icons |
 | Tabbed menu sections | ✅ Complete | Display, Audio, Camera, Fan, Settings |
-| Consistent design language | ✅ Complete | 12pt headers, 11pt body, icons |
-| Dark mode support | ✅ Complete | Template icon adapts |
+| Consistent design language | ✅ Complete | 12pt labels, proper spacing |
+| Dark mode support | ✅ Complete | Template icons adapt |
 
 ---
 
@@ -126,23 +119,23 @@ Macaroni.app
 │   ├── Display (DDCService, SolarBrightnessService, DisplayManager)
 │   ├── Audio (AudioManager via SimplyCoreAudio)
 │   ├── Camera (CameraManager, FrameProcessor, CMIOSinkSender, VirtualCameraPreview)
-│   └── FanControl (ThermalService, FanCurveController)
+│   ├── FanControl (ThermalService, FanCurveController)
+│   └── UI (MainMenuView, Settings)
 ├── MacaroniFanHelper (Privileged XPC daemon for SMC)
-└── MacaroniCameraExtension (CMIOExtension virtual camera with placeholder support)
+└── MacaroniCameraExtension (CMIOExtension virtual camera)
 ```
 
 ---
 
-## Technical Debt
+## Code Quality
 
-1. **Keyboard shortcuts window** - Currently just a placeholder button
-
----
-
-## Next Steps (Priority Order)
-
-1. **Keyboard Shortcuts Window** - Proper settings window for configuring hotkeys
-2. **Polish & Release** - DMG packaging, notarization, GitHub release
+**v1.0 Code Review Completed:**
+- ✅ No debug logging or print statements
+- ✅ No commented-out code blocks
+- ✅ No unused imports or dead code
+- ✅ Force unwraps fixed or verified safe
+- ✅ Error handling with proper logging
+- ✅ Consistent coding patterns
 
 ---
 
@@ -150,10 +143,18 @@ Macaroni.app
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| KeyboardShortcuts | Latest | Global hotkey handling |
-| SimplyCoreAudio | Latest | CoreAudio wrapper |
-| Solar | Latest | Sunrise/sunset calculation |
-| LaunchAtLogin | Latest | Login item management |
+| KeyboardShortcuts | 2.4.0 | Global hotkey handling |
+| SimplyCoreAudio | 4.1.1 | CoreAudio wrapper |
+| Solar | 3.0.1 | Sunrise/sunset calculation |
+| LaunchAtLogin | 1.1.0 | Login item management |
+
+---
+
+## Build System
+
+- **Makefile** - `make run` for kill → clean → build → launch
+- **XcodeGen** - `project.yml` generates Xcode project
+- **Targets:** Macaroni (app), MacaroniFanHelper (helper), MacaroniCameraExtension (extension)
 
 ---
 
@@ -171,7 +172,6 @@ Macaroni.app
 ### Display
 - [MonitorControl](https://github.com/MonitorControl/MonitorControl) - DDC/CI reference
 - [BetterDisplay](https://github.com/waydabber/BetterDisplay) - HiDPI scaling reference
-- [one-key-hidpi](https://github.com/xzhih/one-key-hidpi) - Display override plists
 
 ### Fan Control
 - [Stats](https://github.com/exelban/stats) - SMC/temperature patterns
@@ -182,6 +182,9 @@ Macaroni.app
 
 ---
 
-## Contact
+## Version History
 
-For questions or contributions, please open an issue on GitHub.
+### v1.0 (February 2026)
+- Initial release
+- All core features complete
+- Code review passed

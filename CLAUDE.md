@@ -4,20 +4,33 @@ This file provides context and guidelines for Claude Code when working on this c
 
 ## Project Overview
 
-Macaroni is a macOS menubar utility that combines display, audio, camera, and fan control into a single app. It's built with Swift/SwiftUI and targets macOS 14+ on Apple Silicon Macs.
+Macaroni is a macOS menubar utility that combines display, audio, camera, and fan control into a single app. It replaces 5 separate utilities (BetterDisplay, SoundSource, Hand Mirror, OBS Virtual Camera, Mac Fan Control) with one native SwiftUI app targeting macOS 14+ on Apple Silicon.
 
 ## Architecture
 
+```
+Macaroni.app
+├── Main App (Macaroni/)
+│   ├── App/           → MacaroniApp.swift, MenuBarLabel
+│   ├── Features/
+│   │   ├── Display/   → DDCService, SolarBrightnessService, VirtualDisplayService
+│   │   ├── Audio/     → AudioManager (SimplyCoreAudio)
+│   │   ├── Camera/    → CameraManager, FrameProcessor, CMIOSinkSender
+│   │   └── FanControl/→ ThermalService, FanCurveController
+│   ├── UI/            → MainMenuView, SettingsMenuView
+│   └── Core/          → Preferences, ShortcutManager, SystemExtensionManager
+│
+├── MacaroniFanHelper/ → Privileged XPC daemon for SMC writes
+│
+└── MacaroniCameraExtension/ → CMIOExtension virtual camera
+```
+
 ### Main App (Macaroni/)
 
-- **App/**: Entry point (`MacaroniApp.swift`) using `MenuBarExtra` for menubar-only UI
-- **Features/**: Four main modules:
-  - `Display/`: DDC/CI brightness, auto-brightness (solar-based), resolution management
-  - `Audio/`: CoreAudio volume control via SimplyCoreAudio
-  - `Camera/`: AVFoundation capture, frame processing, preview
-  - `FanControl/`: IOHIDEventSystem for temperature, XPC helper for fan speed
-- **UI/**: SwiftUI views including `MainMenuView` with tabbed sections
-- **Core/**: `Preferences` (UserDefaults), `ShortcutManager` (KeyboardShortcuts)
+- **App/**: Entry point using `MenuBarExtra` for menubar-only UI
+- **Features/**: Four main modules (Display, Audio, Camera, FanControl)
+- **UI/**: SwiftUI views with tabbed sections
+- **Core/**: Preferences, shortcuts, system extension management
 
 ### Fan Helper (MacaroniFanHelper/)
 
@@ -25,88 +38,136 @@ Privileged XPC service for SMC writes. Runs as a LaunchDaemon with root privileg
 
 - `SMCWriteService.swift`: Low-level SMC communication
 - `main.swift`: XPC listener and `FanHelperProtocol` implementation
-- Supports both Apple Silicon (F0Md key, Float32 format) and Intel (FS! key, FPE2 format)
+- Supports both Apple Silicon (F0Md key, Float32) and Intel (FS! key, FPE2)
 
 ### Camera Extension (MacaroniCameraExtension/)
 
-CMIOExtension for virtual camera output. Not yet fully implemented.
+CMIOExtension providing virtual camera output. Fully implemented with:
+
+- `ExtensionProvider.swift`: Main entry point, reads UUIDs from Info.plist
+- `ExtensionDeviceSource.swift`: Device with sink/source streams, placeholder generation
+- `ExtensionStreamSource.swift`: Source stream for apps to read from
+- `ExtensionSinkSource.swift`: Sink stream receiving frames from main app
+
+**Key UUIDs** (must match in Info.plist, CMIOSinkSender, SystemExtensionManager):
+- Device: `A8D7B8AA-65AD-4D21-9C42-F3D7A8D7B8AA`
+- Source: `B9E8C9BB-76BE-4E32-AD53-04E8B9E8C9BB`
+- Sink: `C0F9D0CC-87CF-4F43-BE64-05F9C0F9D0CC`
 
 ## Key Technical Details
 
 ### DDC/CI (Display Brightness)
 - Uses `IOAVServiceWriteI2C` / `IOAVServiceReadI2C` for Apple Silicon
 - VCP code `0x10` for brightness control
-- Requires non-sandboxed app for IOKit access
+- Service cache maintains display ID → IOAVService mapping
+
+### Virtual Camera
+- CMIOExtension with OBS-style sink/source architecture
+- Main app sends frames via `CMIOSinkSender` using CoreMediaIO APIs
+- Placeholder frames shown when camera OFF (dual text: normal + mirrored)
+- Extension updates require app restart (macOS caches CMIO devices per-process)
 
 ### Temperature Reading
 - Uses private `IOHIDEventSystem` API via `dlsym`
-- Filters sensors by name containing: "cpu", "soc", "die", "pmgr"
+- Filters sensors by name: "cpu", "soc", "die", "pmgr"
 - Returns maximum temperature from matched sensors
 
 ### Fan Control
-- Requires privileged helper at `/Library/PrivilegedHelperTools/com.macaroni.fanhelper`
-- XPC protocol: `FanHelperProtocol` defined in both app and helper
-- SMC keys:
-  - `F0Ac` - Actual RPM
-  - `F0Mn` / `F0Mx` - Min/Max RPM
-  - `F0Tg` - Target RPM
-  - `F0Md` - Fan mode (Apple Silicon)
-  - `FS!` - Forced mode bitmask (Intel)
+- Privileged helper at `/Library/PrivilegedHelperTools/com.macaroni.fanhelper`
+- XPC protocol: `FanHelperProtocol`
+- SMC keys: `F0Ac` (actual), `F0Mn/F0Mx` (min/max), `F0Tg` (target), `F0Md` (mode)
 
-### Resolution Switching
-- Uses `CGDisplayCopyAllDisplayModes` with `kCGDisplayShowDuplicateLowResolutionModes`
-- Filters to show only HiDPI modes and native panel resolution
-- Avoids showing "scaled" intermediate resolutions that appear blurry
+### Menu Bar Display
+- Three modes: Icon only, Volume (dynamic icon), Temperature
+- Volume icon changes based on level: slash (muted), wave.1/2/3.fill
 
 ## Build System
 
-- Uses XcodeGen (`project.yml`) to generate Xcode project
-- Swift Package Manager for dependencies
-- Targets: Macaroni (app), MacaroniFanHelper (helper), MacaroniCameraExtension (extension)
+### Makefile Commands
+```bash
+make run    # Kill → Clean → Build → Launch (recommended)
+make build  # Build only
+make clean  # Clean build artifacts
+make kill   # Kill running instances
+```
+
+### Project Generation
+```bash
+xcodegen generate  # Regenerate Xcode project from project.yml
+```
+
+### Targets
+- `Macaroni` - Main app
+- `MacaroniFanHelper` - Privileged helper (requires separate installation)
+- `MacaroniCameraExtension` - System extension (embedded in app)
 
 ## Dependencies
 
-- `KeyboardShortcuts` - Global hotkeys
-- `SimplyCoreAudio` - Audio device control
-- `Solar` - Sunrise/sunset calculation
-- `LaunchAtLogin` - Login item
+| Package | Version | Purpose |
+|---------|---------|---------|
+| KeyboardShortcuts | 2.4.0 | Global hotkeys |
+| SimplyCoreAudio | 4.1.1 | Audio device control |
+| Solar | 3.0.1 | Sunrise/sunset calculation |
+| LaunchAtLogin | 1.1.0 | Login item management |
 
 ## Code Style
 
 - Use `os.log` Logger for logging, not print statements
+- No debug logging to files in production code
 - Follow Swift naming conventions
 - Use proper access control (private/internal/public)
-- Add doc comments for public APIs
-- Keep views focused and use extracted subviews
+- Guard against force unwraps where possible
+- Handle errors with logging, don't silently ignore
 
 ## Common Tasks
 
-### Adding a new feature module:
-1. Create folder under `Macaroni/Features/`
-2. Create Manager/Service class for business logic
-3. Create MenuView for UI
-4. Add tab/section in `MainMenuView.swift`
+### Building and Running
+```bash
+make run  # Recommended: kills old instance, clean builds, launches
+```
 
-### Working with SMC:
-1. Test reads first before writes
-2. Auto-detect data format (Float32 vs FPE2)
-3. Always provide fallback for unknown keys
+### Bumping Extension Version
+When changing camera extension code:
+1. Edit `MacaroniCameraExtension/Info.plist`
+2. Increment `CFBundleVersion`
+3. `make run`
+4. Click "Update" in Camera tab, then "Restart Now"
 
-### Debugging fan control:
-1. Check helper installation: `ls -la /Library/PrivilegedHelperTools/com.macaroni.fanhelper`
-2. Check daemon status: `sudo launchctl list | grep macaroni`
-3. View helper logs: `log show --predicate 'subsystem == "com.macaroni.fanhelper"' --last 5m`
+### Testing Virtual Camera
+1. Run Macaroni
+2. Activate extension if needed (Camera tab → Activate)
+3. Open Photo Booth → Select "Macaroni Camera"
+4. Toggle camera ON/OFF in Macaroni to test placeholder vs live feed
 
-## Known Issues
+### Debugging Fan Control
+```bash
+# Check helper installation
+ls -la /Library/PrivilegedHelperTools/com.macaroni.fanhelper
 
-- Virtual camera extension not fully implemented
-- HiDPI scaling for external displays requires private CGVirtualDisplay API (not implemented)
-- Audio extension (virtual audio device) not implemented
+# Check daemon status
+sudo launchctl list | grep macaroni
 
-## Testing
+# View helper logs
+log show --predicate 'subsystem == "com.macaroni.fanhelper"' --last 5m
+```
 
-Build and run from Xcode. For fan control testing:
-1. Install privileged helper
-2. Check temperature readings
-3. Test fan speed changes with manual slider
-4. Verify automatic curve behavior
+### Debugging Camera Extension
+```bash
+# View extension logs
+log show --predicate 'subsystem == "com.macaroni.camera"' --last 5m
+```
+
+## File Locations
+
+| File | Purpose |
+|------|---------|
+| `project.yml` | XcodeGen project definition |
+| `Makefile` | Build automation |
+| `Progress.md` | Development progress tracking |
+| `CLAUDE.md` | This file - AI assistant context |
+
+## Important Notes
+
+- **Extension Updates**: macOS caches CMIO devices per-process. After updating the camera extension, the app must restart for changes to take effect.
+- **Hardcoded UUIDs**: Camera device/stream UUIDs are intentionally hardcoded and must match across Info.plist, CMIOSinkSender.swift, and SystemExtensionManager.swift.
+- **No Sandboxing**: App is not sandboxed to allow IOKit access for DDC/CI and SMC communication.
