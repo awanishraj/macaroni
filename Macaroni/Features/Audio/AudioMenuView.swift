@@ -36,7 +36,8 @@ struct AudioMenuView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 16)
     }
 
     // MARK: - Volume Section

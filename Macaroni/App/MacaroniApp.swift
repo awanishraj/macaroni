@@ -44,6 +44,18 @@ struct MenuBarLabel: View {
     @EnvironmentObject var audioManager: AudioManager
     @EnvironmentObject var preferences: Preferences
 
+    private var volumeIconName: String {
+        if audioManager.isMuted || audioManager.volume == 0 {
+            return "speaker.slash.fill"
+        } else if audioManager.volume < 0.33 {
+            return "speaker.wave.1.fill"
+        } else if audioManager.volume < 0.66 {
+            return "speaker.wave.2.fill"
+        } else {
+            return "speaker.wave.3.fill"
+        }
+    }
+
     var body: some View {
         switch preferences.menuBarDisplayMode {
         case .temperature:
@@ -53,8 +65,7 @@ struct MenuBarLabel: View {
                 Image("MenuBarIcon")
             }
         case .volume:
-            let volumePercent = Int(audioManager.volume * 100)
-            Text("\(volumePercent)%")
+            Image(systemName: volumeIconName)
         case .iconOnly:
             Image("MenuBarIcon")
         }

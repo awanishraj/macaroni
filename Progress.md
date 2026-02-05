@@ -1,6 +1,6 @@
 # Macaroni - Development Progress
 
-*Last updated: February 2026*
+*Last updated: February 5, 2026*
 
 ## Vision
 
@@ -59,17 +59,24 @@ Files added:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Camera enumeration | ✅ Complete | Lists all available cameras |
-| Quick preview popover | ✅ Complete | Click menubar to show/hide |
-| Rotation transforms | ✅ Complete | 0°, 90°, 180°, 270° |
-| Flip controls | ✅ Complete | Horizontal and vertical |
-| Frame overlays | ⚠️ Partial | Infrastructure ready, frames not bundled |
-| **Virtual camera output** | ❌ Blocked | CMIOExtension scaffolded but not functional |
+| Camera enumeration | ✅ Complete | Lists all cameras, filters out virtual camera |
+| Live preview | ✅ Complete | Shows Macaroni Camera output in menu |
+| Rotation transforms | ✅ Complete | Counter-clockwise, clockwise via icons |
+| Horizontal flip | ✅ Complete | Toggle via icon button |
+| Frame overlays | ✅ Complete | Rounded corners, polaroid, neon, vintage |
+| **Virtual camera output** | ✅ Complete | CMIOExtension with sink/source streams |
+| **Placeholder frames** | ✅ Complete | Shows "Turn on camera" when camera OFF |
+| **Extension updates** | ✅ Complete | Update button + restart prompt |
 
-**Roadblock:** Virtual camera requires:
-- Properly signing the CMIOExtension
-- System Extension approval workflow
-- Frame passing from main app to extension
+**Virtual Camera Implementation:**
+- CMIOExtension with fixed UUIDs (OBS-style architecture)
+- Sink stream receives frames from main app via CoreMediaIO
+- Source stream outputs to apps like Zoom, Photo Booth, FaceTime
+- Auto-reconnect logic for robust connection handling
+- Aspect-fill scaling (crops to fill 1920x1080 output)
+- System extension auto-detection on app launch
+- Placeholder frames with dual text (normal + mirrored) for apps that flip video
+- Seamless extension updates with restart prompt (macOS caches CMIO devices per-process)
 
 ---
 
@@ -85,7 +92,7 @@ Files added:
 | Helper installation | ✅ Complete | XPC LaunchDaemon |
 | M4 Mac Mini support | ✅ Complete | Float32 format, F0Md key |
 
-**Fully functional** - Fan control is the most complete module.
+**Fully functional** - Robust temperature monitoring and fan speed control.
 
 ---
 
@@ -118,28 +125,24 @@ Macaroni.app
 ├── Main App
 │   ├── Display (DDCService, SolarBrightnessService, DisplayManager)
 │   ├── Audio (AudioManager via SimplyCoreAudio)
-│   ├── Camera (CameraManager, FrameProcessor)
+│   ├── Camera (CameraManager, FrameProcessor, CMIOSinkSender, VirtualCameraPreview)
 │   └── FanControl (ThermalService, FanCurveController)
 ├── MacaroniFanHelper (Privileged XPC daemon for SMC)
-└── MacaroniCameraExtension (CMIOExtension - not functional)
+└── MacaroniCameraExtension (CMIOExtension virtual camera with placeholder support)
 ```
 
 ---
 
 ## Technical Debt
 
-1. **Camera extension not functional** - Needs signing, entitlements, frame passing
-2. **Keyboard shortcuts window** - Currently just a placeholder button
-3. **Frame overlays** - Code ready but no bundled PNG frames
+1. **Keyboard shortcuts window** - Currently just a placeholder button
 
 ---
 
 ## Next Steps (Priority Order)
 
-1. **Virtual Camera** - Get CMIOExtension working for video call apps
-2. **Keyboard Shortcuts Window** - Proper settings window for configuring hotkeys
-3. **Frame Overlays** - Bundle artistic frames for camera preview
-4. **Polish & Release** - DMG packaging, notarization, GitHub release
+1. **Keyboard Shortcuts Window** - Proper settings window for configuring hotkeys
+2. **Polish & Release** - DMG packaging, notarization, GitHub release
 
 ---
 

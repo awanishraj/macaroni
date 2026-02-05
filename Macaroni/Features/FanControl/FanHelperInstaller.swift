@@ -14,9 +14,10 @@ final class FanHelperInstaller {
 
     // MARK: - Public API
 
-    /// Check if the helper is installed
+    /// Check if the helper is installed (both binary and plist must exist)
     var isInstalled: Bool {
-        FileManager.default.fileExists(atPath: helperPath)
+        FileManager.default.fileExists(atPath: helperPath) &&
+        FileManager.default.fileExists(atPath: plistPath)
     }
 
     /// Check if the helper daemon is running

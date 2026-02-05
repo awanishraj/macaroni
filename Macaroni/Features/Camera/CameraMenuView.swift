@@ -4,45 +4,82 @@ struct CameraMenuView: View {
     @EnvironmentObject var cameraManager: CameraManager
     @EnvironmentObject var preferences: Preferences
     @ObservedObject private var extensionManager = SystemExtensionManager.shared
+    @State private var isHoveringPreview = false
+    @State private var needsRestart = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Show restart prompt if extension was updated
+            if needsRestart {
+                restartRequiredSection
+            }
             // Authorization check
-            if cameraManager.authorizationStatus != .authorized {
+            else if cameraManager.authorizationStatus != .authorized {
                 authorizationSection
             } else {
-                // Preview first (like Hand Mirror)
+                // Preview on top
                 previewSection
+
+                // Camera selector
+                if cameraManager.cameras.count > 1 {
+                    cameraSelector
+                }
 
                 // Transform Controls
                 transformSection
 
-                // Virtual Camera Section
-                virtualCameraSection
-
-                // Camera selector at bottom
-                if cameraManager.cameras.count > 1 {
-                    cameraSelector
+                // Virtual Camera Section - only show if not activated
+                if extensionManager.cameraExtensionStatus != .activated {
+                    virtualCameraSection
                 }
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .onAppear {
-            // Auto-start preview like Hand Mirror
-            if cameraManager.authorizationStatus == .authorized && !cameraManager.isCapturing {
-                cameraManager.startCapture()
-            }
+        .padding(.top, 12)
+        .padding(.bottom, 16)
+        .onReceive(NotificationCenter.default.publisher(for: .cameraExtensionNeedsRestart)) { _ in
+            needsRestart = true
         }
-        .onDisappear {
-            // Stop camera when leaving the tab
-            if cameraManager.isCapturing {
-                cameraManager.stopCapture()
-            }
-        }
+        // NOTE: Camera only starts when user clicks power button
+        // Don't stop capture on disappear - keep sending frames to virtual camera
     }
 
-    // MARK: - Preview Section (First, like Hand Mirror)
+    // MARK: - Restart Required Section
+
+    private var restartRequiredSection: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "arrow.clockwise.circle.fill")
+                .font(.system(size: 32))
+                .foregroundColor(.orange)
+
+            Text("Restart Required")
+                .font(.system(size: 13, weight: .semibold))
+
+            Text("Camera extension updated.\nPlease restart Macaroni to apply changes.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button("Restart Now") {
+                restartApp()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 30)
+    }
+
+    private func restartApp() {
+        let bundlePath = Bundle.main.bundlePath
+        let task = Process()
+        task.launchPath = "/usr/bin/open"
+        task.arguments = ["-n", bundlePath]
+        task.launch()
+        NSApp.terminate(nil)
+    }
+
+    // MARK: - Preview Section - Shows Macaroni Camera output
 
     private var previewSection: some View {
         ZStack {
@@ -51,192 +88,193 @@ struct CameraMenuView: View {
                 .frame(height: 160)
 
             if cameraManager.isCapturing {
-                CameraPreviewView()
+                VirtualCameraPreviewView()
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             } else {
                 VStack(spacing: 8) {
                     Image(systemName: "video.slash")
                         .font(.system(size: 24))
                         .foregroundColor(.secondary)
-                    Text("Preview Off")
+                    Text("Click power button to start")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
             }
+
+            // Power button overlay
+            // Show when: hovering (if camera on) OR camera is off (always)
+            if isHoveringPreview || !cameraManager.isCapturing {
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button {
+                            cameraManager.toggleCapture()
+                        } label: {
+                            Image(systemName: cameraManager.isCapturing ? "power.circle.fill" : "power.circle")
+                                .font(.system(size: 20))
+                                .foregroundColor(cameraManager.isCapturing ? .green : .white)
+                                .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(8)
+                    }
+                    Spacer()
+                }
+            }
+        }
+        .onHover { hovering in
+            isHoveringPreview = hovering
         }
     }
 
     // MARK: - Transform Section
 
     private var transformSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Rotation - compact inline
-            HStack {
-                Text("Rotate")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
+        HStack {
+            Text("Transform")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.primary)
 
-                Spacer()
+            Spacer()
 
-                HStack(spacing: 4) {
-                    ForEach(CameraRotation.allCases, id: \.self) { rotation in
-                        Button {
-                            preferences.cameraRotation = rotation
-                        } label: {
-                            Text(rotation.displayName)
-                                .font(.system(size: 10, weight: .medium))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    preferences.cameraRotation == rotation
-                                        ? Color.accentColor
-                                        : Color.secondary.opacity(0.15)
-                                )
-                                .foregroundColor(
-                                    preferences.cameraRotation == rotation
-                                        ? .white
-                                        : .primary
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-
-            // Flip - compact inline
-            HStack {
-                Text("Flip")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
-
-                Spacer()
-
-                HStack(spacing: 4) {
-                    Button {
-                        preferences.horizontalFlip.toggle()
-                    } label: {
-                        Image(systemName: "arrow.left.and.right")
-                            .font(.system(size: 10, weight: .medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                preferences.horizontalFlip
-                                    ? Color.accentColor
-                                    : Color.secondary.opacity(0.15)
-                            )
-                            .foregroundColor(
-                                preferences.horizontalFlip
-                                    ? .white
-                                    : .primary
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Horizontal Flip")
-
-                    Button {
-                        preferences.verticalFlip.toggle()
-                    } label: {
-                        Image(systemName: "arrow.up.and.down")
-                            .font(.system(size: 10, weight: .medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                preferences.verticalFlip
-                                    ? Color.accentColor
-                                    : Color.secondary.opacity(0.15)
-                            )
-                            .foregroundColor(
-                                preferences.verticalFlip
-                                    ? .white
-                                    : .primary
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Vertical Flip")
-                }
-            }
-        }
-    }
-
-    // MARK: - Virtual Camera Section
-
-    private var virtualCameraSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Virtual Camera")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
-
-                Spacer()
-
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(extensionStatusColor)
-                        .frame(width: 6, height: 6)
-                    Text(extensionStatusText)
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            HStack(spacing: 8) {
+            HStack(spacing: 4) {
+                // Anti-clockwise rotation
                 Button {
-                    extensionManager.activateCameraExtension()
+                    preferences.cameraRotation = preferences.cameraRotation.previous
                 } label: {
-                    Text(extensionManager.cameraExtensionStatus == .activated ? "Activated" : "Activate")
-                        .font(.system(size: 10, weight: .medium))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(extensionManager.cameraExtensionStatus == .activated ? Color.green.opacity(0.2) : Color.accentColor)
-                        .foregroundColor(extensionManager.cameraExtensionStatus == .activated ? .green : .white)
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 11, weight: .medium))
+                        .frame(width: 24, height: 20)
+                        .background(Color.secondary.opacity(0.15))
+                        .foregroundColor(.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
                 .buttonStyle(.plain)
-                .disabled(extensionManager.cameraExtensionStatus == .activating || extensionManager.cameraExtensionStatus == .activated)
+                .help("Rotate Counter-clockwise")
 
-                if extensionManager.cameraExtensionStatus == .activated {
-                    Text("Available as \"Macaroni Camera\"")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary.opacity(0.7))
+                // Clockwise rotation
+                Button {
+                    preferences.cameraRotation = preferences.cameraRotation.next
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 11, weight: .medium))
+                        .frame(width: 24, height: 20)
+                        .background(Color.secondary.opacity(0.15))
+                        .foregroundColor(.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
-            }
+                .buttonStyle(.plain)
+                .help("Rotate Clockwise")
 
-            if case .failed(let error) = extensionManager.cameraExtensionStatus {
-                Text(error)
-                    .font(.system(size: 9))
-                    .foregroundColor(.orange)
-                    .lineLimit(2)
-            }
-
-            if extensionManager.cameraExtensionStatus == .needsApproval {
-                Text("Go to System Settings > Privacy & Security to approve")
-                    .font(.system(size: 9))
-                    .foregroundColor(.orange)
+                // Horizontal flip
+                Button {
+                    preferences.horizontalFlip.toggle()
+                } label: {
+                    Image(systemName: "arrow.left.and.right")
+                        .font(.system(size: 11, weight: .medium))
+                        .frame(width: 24, height: 20)
+                        .background(
+                            preferences.horizontalFlip
+                                ? Color.accentColor
+                                : Color.secondary.opacity(0.15)
+                        )
+                        .foregroundColor(
+                            preferences.horizontalFlip
+                                ? .white
+                                : .primary
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+                .help("Horizontal Flip")
             }
         }
     }
 
-    private var extensionStatusText: String {
-        switch extensionManager.cameraExtensionStatus {
-        case .unknown: return "Not Installed"
-        case .notInstalled: return "Not Installed"
-        case .activating: return "Activating..."
-        case .activated: return "Active"
-        case .needsApproval: return "Needs Approval"
-        case .failed: return "Failed"
-        }
-    }
+    // MARK: - Virtual Camera Section (only shown when not activated)
 
-    private var extensionStatusColor: Color {
-        switch extensionManager.cameraExtensionStatus {
-        case .activated: return .green
-        case .activating: return .yellow
-        case .needsApproval: return .orange
-        case .failed: return .red
-        default: return .gray
+    private var virtualCameraSection: some View {
+        HStack {
+            Text("Virtual Camera")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            if extensionManager.cameraExtensionStatus == .activating {
+                ProgressView()
+                    .controlSize(.small)
+                    .padding(.trailing, 4)
+                Text("Activating...")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            } else if extensionManager.cameraExtensionStatus == .needsUpdate {
+                Button {
+                    extensionManager.activateCameraExtension()
+                } label: {
+                    Text("Update")
+                        .font(.system(size: 10, weight: .medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.orange)
+                        .foregroundColor(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+            } else if extensionManager.cameraExtensionStatus == .needsApproval {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Button {
+                        extensionManager.activateCameraExtension()
+                    } label: {
+                        Text("Activate")
+                            .font(.system(size: 10, weight: .medium))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.accentColor)
+                            .foregroundColor(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.plain)
+
+                    Text("Check System Settings > Privacy")
+                        .font(.system(size: 9))
+                        .foregroundColor(.orange)
+                }
+            } else if case .failed(let error) = extensionManager.cameraExtensionStatus {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Button {
+                        extensionManager.activateCameraExtension()
+                    } label: {
+                        Text("Retry")
+                            .font(.system(size: 10, weight: .medium))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.accentColor)
+                            .foregroundColor(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.plain)
+
+                    Text(error)
+                        .font(.system(size: 9))
+                        .foregroundColor(.orange)
+                        .lineLimit(1)
+                }
+            } else {
+                // Not installed or unknown
+                Button {
+                    extensionManager.activateCameraExtension()
+                } label: {
+                    Text("Activate")
+                        .font(.system(size: 10, weight: .medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.accentColor)
+                        .foregroundColor(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
@@ -246,8 +284,8 @@ struct CameraMenuView: View {
     private var cameraSelector: some View {
         HStack {
             Text("Camera")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.secondary)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.primary)
 
             Spacer()
 
@@ -291,53 +329,36 @@ struct CameraMenuView: View {
         .padding(.vertical, 40)
     }
 
-    // MARK: - Helpers
-
-    private func openCameraSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
-            NSWorkspace.shared.open(url)
-        }
-    }
 }
 
-// MARK: - Camera Preview View
+// MARK: - Virtual Camera Preview View
 
-struct CameraPreviewView: NSViewRepresentable {
-    @EnvironmentObject var cameraManager: CameraManager
-    @EnvironmentObject var preferences: Preferences
+struct VirtualCameraPreviewView: NSViewRepresentable {
+    @ObservedObject private var virtualPreview = VirtualCameraPreview.shared
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.black.cgColor
+
+        // Start capturing from Macaroni Camera
+        virtualPreview.startCapture()
+
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        if let previewLayer = cameraManager.previewLayer {
+        if let previewLayer = virtualPreview.previewLayer {
             previewLayer.frame = nsView.bounds
 
             if previewLayer.superlayer == nil {
                 nsView.layer?.addSublayer(previewLayer)
             }
-
-            // Apply transforms
-            var transform = CATransform3DIdentity
-
-            // Apply rotation
-            let rotation = CGFloat(preferences.cameraRotation.rawValue) * .pi / 180
-            transform = CATransform3DRotate(transform, rotation, 0, 0, 1)
-
-            // Apply flips
-            if preferences.horizontalFlip {
-                transform = CATransform3DScale(transform, -1, 1, 1)
-            }
-            if preferences.verticalFlip {
-                transform = CATransform3DScale(transform, 1, -1, 1)
-            }
-
-            previewLayer.transform = transform
         }
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
+        VirtualCameraPreview.shared.stopCapture()
     }
 }
 

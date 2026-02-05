@@ -94,182 +94,56 @@ struct SettingsMenuView: View {
     @EnvironmentObject var preferences: Preferences
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Menubar Display
-            menuBarDisplaySection
+        VStack(alignment: .leading, spacing: 12) {
+            // Menu Icon
+            HStack {
+                Text("Menu Icon")
+                    .font(.system(size: 12))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Picker("", selection: $preferences.menuBarDisplayMode) {
+                    ForEach(MenuBarDisplayMode.allCases, id: \.self) { mode in
+                        Image(systemName: mode.iconName)
+                            .frame(width: 50)
+                            .tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .controlSize(.small)
+                .fixedSize()
+            }
 
             // Launch at Login
-            launchAtLoginSection
+            HStack {
+                Text("Launch at Login")
+                    .font(.system(size: 12))
+                    .foregroundColor(.primary)
 
-            // Keyboard Shortcuts
-            keyboardShortcutsSection
+                Spacer()
 
-            // Quit Button
-            quitSection
+                LaunchAtLogin.Toggle("")
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+            }
 
-            // Subtle version footer
-            versionFooter
+            // Quit Macaroni
+            Button {
+                NSApplication.shared.terminate(nil)
+            } label: {
+                Text("Quit Macaroni")
+                    .font(.system(size: 12))
+                    .foregroundColor(.primary)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
     }
-
-    // MARK: - Menubar Display Section
-
-    private var menuBarDisplaySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Menubar Display")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-
-            Picker("Display", selection: $preferences.menuBarDisplayMode) {
-                ForEach(MenuBarDisplayMode.allCases, id: \.self) { mode in
-                    Text(mode.displayName).tag(mode)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .controlSize(.small)
-        }
-    }
-
-    // MARK: - Launch at Login Section
-
-    private var launchAtLoginSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Startup")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-
-            LaunchAtLogin.Toggle {
-                HStack(spacing: 8) {
-                    Image(systemName: "sunrise")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                    Text("Launch at Login")
-                        .font(.system(size: 11))
-                        .foregroundColor(.primary)
-                }
-            }
-            .toggleStyle(.switch)
-            .controlSize(.small)
-        }
-    }
-
-    // MARK: - Keyboard Shortcuts Section
-
-    private var keyboardShortcutsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Shortcuts")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-
-            Button {
-                openShortcutsWindow()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "command")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                    Text("Configure Keyboard Shortcuts")
-                        .font(.system(size: 11))
-                        .foregroundColor(.primary)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary.opacity(0.6))
-                }
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    // MARK: - Quit Section
-
-    private var quitSection: some View {
-        Button {
-            NSApplication.shared.terminate(nil)
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "power")
-                    .font(.system(size: 10))
-                    .foregroundColor(.red.opacity(0.8))
-                Text("Quit Macaroni")
-                    .font(.system(size: 11))
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Version Footer
-
-    private var versionFooter: some View {
-        HStack {
-            Spacer()
-            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
-                .font(.system(size: 9))
-                .foregroundColor(.secondary.opacity(0.5))
-            Spacer()
-        }
-        .padding(.top, 4)
-    }
-
-    private func openShortcutsWindow() {
-        // Open keyboard shortcuts configuration
-        // This would typically open a settings window
-    }
 }
-
-// MARK: - Keyboard Shortcuts Settings View
-
-struct KeyboardShortcutsSettingsView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Keyboard Shortcuts")
-                .font(.headline)
-
-            Group {
-                ShortcutRow(name: "Brightness Up", shortcut: .brightnessUp)
-                ShortcutRow(name: "Brightness Down", shortcut: .brightnessDown)
-                ShortcutRow(name: "Volume Up", shortcut: .volumeUp)
-                ShortcutRow(name: "Volume Down", shortcut: .volumeDown)
-                ShortcutRow(name: "Toggle Mute", shortcut: .toggleMute)
-                ShortcutRow(name: "Toggle Camera Preview", shortcut: .togglePreview)
-                ShortcutRow(name: "Cycle Camera Rotation", shortcut: .cycleRotation)
-            }
-        }
-        .padding()
-    }
-}
-
-struct ShortcutRow: View {
-    let name: String
-    let shortcut: KeyboardShortcuts.Name
-
-    var body: some View {
-        HStack {
-            Text(name)
-                .font(.caption)
-
-            Spacer()
-
-            KeyboardShortcuts.Recorder(for: shortcut)
-        }
-    }
-}
-
-import KeyboardShortcuts
 
 #Preview {
     MainMenuView()

@@ -1,6 +1,5 @@
 import Foundation
 import CoreImage
-import Accelerate
 import AppKit
 
 /// Processes camera frames with rotation, flip, and frame overlays
@@ -9,8 +8,6 @@ final class FrameProcessor {
     var horizontalFlip: Bool = false
     var verticalFlip: Bool = false
     var frameStyle: FrameStyle = .none
-
-    private let context = CIContext(options: [.useSoftwareRenderer: false])
 
     // Cached frame overlay images
     private var frameOverlayCache: [FrameStyle: CIImage] = [:]
@@ -38,122 +35,6 @@ final class FrameProcessor {
         result = applyFrameOverlay(result)
 
         return result
-    }
-
-    /// Process using vImage for better performance (returns CVPixelBuffer)
-    func processWithVImage(_ pixelBuffer: CVPixelBuffer) -> CVPixelBuffer? {
-        // Create vImage buffer from pixel buffer
-        var sourceFormat = vImage_CGImageFormat(
-            bitsPerComponent: 8,
-            bitsPerPixel: 32,
-            colorSpace: nil,
-            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.first.rawValue),
-            version: 0,
-            decode: nil,
-            renderingIntent: .defaultIntent
-        )
-
-        var sourceBuffer = vImage_Buffer()
-        var error = vImageBuffer_InitWithCVPixelBuffer(
-            &sourceBuffer,
-            &sourceFormat,
-            pixelBuffer,
-            nil,
-            nil,
-            vImage_Flags(kvImageNoFlags)
-        )
-
-        guard error == kvImageNoError else {
-            return nil
-        }
-
-        defer { free(sourceBuffer.data) }
-
-        // Apply rotation using vImage
-        var destBuffer = vImage_Buffer()
-        let rotatedWidth: vImagePixelCount
-        let rotatedHeight: vImagePixelCount
-
-        switch rotation {
-        case .none, .rotate180:
-            rotatedWidth = sourceBuffer.width
-            rotatedHeight = sourceBuffer.height
-        case .rotate90, .rotate270:
-            rotatedWidth = sourceBuffer.height
-            rotatedHeight = sourceBuffer.width
-        }
-
-        error = vImageBuffer_Init(
-            &destBuffer,
-            rotatedHeight,
-            rotatedWidth,
-            32,
-            vImage_Flags(kvImageNoFlags)
-        )
-
-        guard error == kvImageNoError else {
-            return nil
-        }
-
-        defer { free(destBuffer.data) }
-
-        // Perform rotation
-        let rotationConstant: UInt8
-        switch rotation {
-        case .none: rotationConstant = 0
-        case .rotate90: rotationConstant = 1
-        case .rotate180: rotationConstant = 2
-        case .rotate270: rotationConstant = 3
-        }
-
-        if rotationConstant != 0 {
-            var bgColor: [UInt8] = [0, 0, 0, 255]
-            error = vImageRotate90_ARGB8888(
-                &sourceBuffer,
-                &destBuffer,
-                rotationConstant,
-                &bgColor,
-                vImage_Flags(kvImageNoFlags)
-            )
-
-            guard error == kvImageNoError else {
-                return nil
-            }
-        } else {
-            // Copy source to dest if no rotation
-            memcpy(destBuffer.data, sourceBuffer.data, sourceBuffer.rowBytes * Int(sourceBuffer.height))
-        }
-
-        // Apply flips
-        if horizontalFlip {
-            vImageHorizontalReflect_ARGB8888(&destBuffer, &destBuffer, vImage_Flags(kvImageNoFlags))
-        }
-
-        if verticalFlip {
-            vImageVerticalReflect_ARGB8888(&destBuffer, &destBuffer, vImage_Flags(kvImageNoFlags))
-        }
-
-        // Create output pixel buffer
-        var outputBuffer: CVPixelBuffer?
-        let status = CVPixelBufferCreate(
-            kCFAllocatorDefault,
-            Int(destBuffer.width),
-            Int(destBuffer.height),
-            kCVPixelFormatType_32ARGB,
-            nil,
-            &outputBuffer
-        )
-
-        guard status == kCVReturnSuccess, let output = outputBuffer else {
-            return nil
-        }
-
-        CVPixelBufferLockBaseAddress(output, [])
-        let destData = CVPixelBufferGetBaseAddress(output)
-        memcpy(destData, destBuffer.data, destBuffer.rowBytes * Int(destBuffer.height))
-        CVPixelBufferUnlockBaseAddress(output, [])
-
-        return output
     }
 
     // MARK: - Private Methods
@@ -232,23 +113,18 @@ final class FrameProcessor {
     }
 
     private func createFrameOverlay(for style: FrameStyle, size: CGSize) -> CIImage? {
-        // Create programmatic frame overlays
         let width = size.width
         let height = size.height
 
         switch style {
         case .none:
             return nil
-
         case .roundedCorners:
             return createRoundedCornersOverlay(width: width, height: height)
-
         case .polaroid:
             return createPolaroidOverlay(width: width, height: height)
-
         case .neonBorder:
             return createNeonBorderOverlay(width: width, height: height)
-
         case .vintage:
             return createVintageOverlay(width: width, height: height)
         }
@@ -260,15 +136,12 @@ final class FrameProcessor {
             NSColor.clear.setFill()
             rect.fill()
 
-            // Create rounded rect path for corners mask
             let cornerRadius: CGFloat = min(width, height) * 0.05
             let path = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
 
-            // Fill outside the rounded rect with black (mask)
             NSColor.black.setFill()
             rect.fill()
 
-            // Clear inside (reveal image)
             NSColor.clear.setFill()
             path.fill()
 
@@ -284,26 +157,18 @@ final class FrameProcessor {
 
     private func createPolaroidOverlay(width: CGFloat, height: CGFloat) -> CIImage? {
         let borderWidth = width * 0.03
-        let bottomBorder = height * 0.15  // Larger bottom for polaroid look
+        let bottomBorder = height * 0.15
 
         let size = NSSize(width: width, height: height)
         let image = NSImage(size: size, flipped: false) { rect in
             NSColor.clear.setFill()
             rect.fill()
 
-            // White border
             NSColor.white.setFill()
 
-            // Top border
             NSRect(x: 0, y: height - borderWidth, width: width, height: borderWidth).fill()
-
-            // Left border
             NSRect(x: 0, y: 0, width: borderWidth, height: height).fill()
-
-            // Right border
             NSRect(x: width - borderWidth, y: 0, width: borderWidth, height: height).fill()
-
-            // Bottom border (larger)
             NSRect(x: 0, y: 0, width: width, height: bottomBorder).fill()
 
             return true
@@ -324,11 +189,9 @@ final class FrameProcessor {
             NSColor.clear.setFill()
             rect.fill()
 
-            // Neon cyan/magenta gradient border
             let outerRect = rect
             let innerRect = rect.insetBy(dx: borderWidth, dy: borderWidth)
 
-            // Draw outer glow
             let glowColor = NSColor(red: 0, green: 1, blue: 1, alpha: 0.5)
             glowColor.setStroke()
 
@@ -336,7 +199,6 @@ final class FrameProcessor {
             path.lineWidth = borderWidth
             path.stroke()
 
-            // Draw inner bright line
             let brightColor = NSColor(red: 1, green: 0, blue: 1, alpha: 1)
             brightColor.setStroke()
 
@@ -357,7 +219,6 @@ final class FrameProcessor {
     private func createVintageOverlay(width: CGFloat, height: CGFloat) -> CIImage? {
         let size = NSSize(width: width, height: height)
         let image = NSImage(size: size, flipped: false) { rect in
-            // Sepia-tinted vignette effect
             let gradient = NSGradient(colors: [
                 NSColor(white: 0, alpha: 0),
                 NSColor(white: 0, alpha: 0),
@@ -378,15 +239,5 @@ final class FrameProcessor {
         }
 
         return CIImage(cgImage: cgImage)
-    }
-
-    // MARK: - Cache Management
-
-    func clearCache() {
-        frameOverlayCache.removeAll()
-    }
-
-    func invalidateCache(for style: FrameStyle) {
-        frameOverlayCache.removeValue(forKey: style)
     }
 }

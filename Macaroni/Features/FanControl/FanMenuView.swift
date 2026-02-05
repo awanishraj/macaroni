@@ -1,4 +1,91 @@
 import SwiftUI
+import Combine
+
+// MARK: - Rotating Fan Icon
+
+/// Smoothly rotating fan icon
+/// Max speed: 0.25 rotations/second at 100%, scales linearly
+struct RotatingFanIcon: View {
+    let speedPercent: Int
+
+    @StateObject private var rotationState = FanRotationState()
+
+    var body: some View {
+        Image(systemName: "fan.fill")
+            .font(.system(size: 12))
+            .foregroundColor(speedPercent > 0 ? .accentColor : .secondary)
+            .rotationEffect(.degrees(rotationState.angle))
+            .onChange(of: speedPercent) { _, newValue in
+                rotationState.speedPercent = newValue
+            }
+            .onAppear {
+                rotationState.speedPercent = speedPercent
+                rotationState.start()
+            }
+            .onDisappear {
+                rotationState.stop()
+            }
+    }
+}
+
+/// Manages continuous fan rotation with smooth speed transitions
+private class FanRotationState: ObservableObject {
+    @Published var angle: Double = 0
+    var speedPercent: Int = 0
+
+    private var displayLink: CVDisplayLink?
+    private var lastTime: CFTimeInterval = 0
+
+    // 1 rotation per second at 100% = 360 degrees per second
+    private var degreesPerSecond: Double {
+        guard speedPercent > 0 else { return 0 }
+        return (Double(speedPercent) / 100.0) * 360.0
+    }
+
+    func start() {
+        guard displayLink == nil else { return }
+
+        var link: CVDisplayLink?
+        CVDisplayLinkCreateWithActiveCGDisplays(&link)
+
+        guard let displayLink = link else { return }
+
+        let callback: CVDisplayLinkOutputCallback = { _, inNow, _, _, _, userInfo in
+            let state = Unmanaged<FanRotationState>.fromOpaque(userInfo!).takeUnretainedValue()
+            let currentTime = CFAbsoluteTimeGetCurrent()
+
+            if state.lastTime > 0 {
+                let delta = currentTime - state.lastTime
+                let increment = delta * state.degreesPerSecond
+
+                DispatchQueue.main.async {
+                    state.angle += increment
+                }
+            }
+
+            state.lastTime = currentTime
+            return kCVReturnSuccess
+        }
+
+        let userInfo = Unmanaged.passUnretained(self).toOpaque()
+        CVDisplayLinkSetOutputCallback(displayLink, callback, userInfo)
+        CVDisplayLinkStart(displayLink)
+
+        self.displayLink = displayLink
+        self.lastTime = CFAbsoluteTimeGetCurrent()
+    }
+
+    func stop() {
+        if let link = displayLink {
+            CVDisplayLinkStop(link)
+            displayLink = nil
+        }
+    }
+
+    deinit {
+        stop()
+    }
+}
 
 struct FanMenuView: View {
     @EnvironmentObject var thermalService: ThermalService
@@ -21,7 +108,8 @@ struct FanMenuView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 16)
         .onAppear {
             fanController.start(with: thermalService)
         }
@@ -54,13 +142,22 @@ struct FanMenuView: View {
                     .foregroundColor(.primary)
                 Spacer()
 
-                // Current temperature display
+                // Current temperature display with fan icon on right
                 if let temp = thermalService.cpuTemperature {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         Text("\(Int(temp))°C")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 12, weight: .regular))
                             .foregroundColor(temperatureColor(temp))
                             .monospacedDigit()
+
+                        // Show fan icon always - rotating when active, static when off
+                        if preferences.fanControlEnabled && fanController.helperInstalled {
+                            RotatingFanIcon(speedPercent: fanController.currentFanSpeed)
+                        } else {
+                            Image(systemName: "fan.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
                     }
                 } else {
                     Text("Reading...")
@@ -72,16 +169,14 @@ struct FanMenuView: View {
             // Temperature bar with icons
             HStack(spacing: 10) {
                 Image(systemName: "thermometer.snowflake")
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .foregroundColor(.secondary)
-                    .frame(width: 24, alignment: .trailing)
 
                 temperatureBar
 
                 Image(systemName: "thermometer.sun.fill")
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .foregroundColor(.secondary)
-                    .frame(width: 24, alignment: .leading)
             }
         }
     }
@@ -175,10 +270,10 @@ struct FanMenuView: View {
                 Text("30°")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
-                    .frame(width: 24, alignment: .trailing)
 
                 Slider(value: $preferences.triggerTemperature, in: 30...90, step: 1)
                     .controlSize(.small)
+                    .disabled(!preferences.fanControlEnabled)
                     .onChange(of: preferences.triggerTemperature) { _, newValue in
                         fanController.triggerTemperature = newValue
                     }
@@ -186,85 +281,47 @@ struct FanMenuView: View {
                 Text("90°")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
-                    .frame(width: 24, alignment: .leading)
             }
+            .opacity(preferences.fanControlEnabled ? 1.0 : 0.5)
 
-            // Status line
-            if preferences.fanControlEnabled {
-                if !fanController.helperInstalled {
-                    // Helper not installed - show install button
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 9))
-                                .foregroundColor(.orange)
-                            Text("Helper required for fan control")
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
-                        }
-
-                        Button {
-                            installHelper()
-                        } label: {
-                            HStack(spacing: 4) {
-                                if isInstallingHelper {
-                                    ProgressView()
-                                        .scaleEffect(0.5)
-                                        .frame(width: 10, height: 10)
-                                } else {
-                                    Image(systemName: "arrow.down.circle")
-                                        .font(.system(size: 10))
-                                }
-                                Text(isInstallingHelper ? "Installing..." : "Install Helper")
-                                    .font(.system(size: 10, weight: .medium))
-                            }
-                            .foregroundColor(.accentColor)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isInstallingHelper)
-
-                        if let error = installError {
-                            Text(error)
-                                .font(.system(size: 9))
-                                .foregroundColor(.red.opacity(0.8))
-                        }
-                    }
-                } else {
-                    HStack(spacing: 6) {
-                        Image(systemName: "fan.fill")
+            // Helper install prompt (only shown when needed)
+            if preferences.fanControlEnabled && !fanController.helperInstalled {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(.orange)
+                        Text("Helper required for fan control")
                             .font(.system(size: 10))
-                            .foregroundColor(fanController.currentFanSpeed > 0 ? .accentColor : .secondary)
-                            .rotationEffect(.degrees(fanController.currentFanSpeed > 0 ? 360 : 0))
-                            .animation(
-                                fanController.currentFanSpeed > 0
-                                    ? .linear(duration: 2.0 / Double(max(1, fanController.currentFanSpeed / 10)))
-                                      .repeatForever(autoreverses: false)
-                                    : .default,
-                                value: fanController.currentFanSpeed
-                            )
+                            .foregroundColor(.secondary)
+                    }
 
-                        if let temp = thermalService.cpuTemperature {
-                            if temp <= preferences.triggerTemperature {
-                                Text("Below target - fans idle")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary.opacity(0.7))
+                    Button {
+                        installHelper()
+                    } label: {
+                        HStack(spacing: 4) {
+                            if isInstallingHelper {
+                                ProgressView()
+                                    .scaleEffect(0.5)
+                                    .frame(width: 10, height: 10)
                             } else {
-                                let fanSpeed = fanController.currentFanSpeed
-                                Text("Above target - fans at \(fanSpeed)%")
+                                Image(systemName: "arrow.down.circle")
                                     .font(.system(size: 10))
-                                    .foregroundColor(.secondary.opacity(0.7))
                             }
-                        } else {
-                            Text("Waiting for temperature data...")
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary.opacity(0.7))
+                            Text(isInstallingHelper ? "Installing..." : "Install Helper")
+                                .font(.system(size: 10, weight: .medium))
                         }
+                        .foregroundColor(.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isInstallingHelper)
+
+                    if let error = installError {
+                        Text(error)
+                            .font(.system(size: 9))
+                            .foregroundColor(.red.opacity(0.8))
                     }
                 }
-            } else {
-                Text("Enable to control fans based on temperature")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary.opacity(0.7))
             }
         }
     }

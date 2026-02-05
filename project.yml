@@ -69,12 +69,33 @@ targets:
       - target: MacaroniCameraExtension
         embed: true
         codeSign: true
+      - target: MacaroniFanHelper
+        embed: false
+    postBuildScripts:
+      - script: |
+          # Copy fan helper and plist to Resources folder
+          HELPER_SRC="${BUILT_PRODUCTS_DIR}/com.macaroni.fanhelper"
+          PLIST_SRC="${SRCROOT}/MacaroniFanHelper/com.macaroni.fanhelper.plist"
+          RESOURCES_DIR="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources"
+
+          if [ -f "$HELPER_SRC" ]; then
+            cp "$HELPER_SRC" "$RESOURCES_DIR/"
+            echo "Copied fan helper to Resources"
+          fi
+
+          if [ -f "$PLIST_SRC" ]; then
+            cp "$PLIST_SRC" "$RESOURCES_DIR/"
+            echo "Copied fan helper plist to Resources"
+          fi
+        name: Copy Fan Helper to Resources
     entitlements:
       path: Macaroni/Macaroni.entitlements
       properties:
         com.apple.security.app-sandbox: false
         com.apple.security.device.camera: true
         com.apple.developer.system-extension.install: true
+        com.apple.security.application-groups:
+          - "43QM98RMK6.com.macaroni.app"
 
   MacaroniCameraExtension:
     type: system-extension
@@ -170,6 +191,7 @@ schemes:
       targets:
         Macaroni: all
         MacaroniCameraExtension: all
+        MacaroniFanHelper: all
     run:
       config: Debug
     test:

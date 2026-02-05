@@ -17,9 +17,15 @@
     <key>CFBundlePackageType</key>
     <string>SYSX</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>3.2</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>27</string>
+    <key>MacaroniCameraDeviceUUID</key>
+    <string>A8D7B8AA-65AD-4D21-9C42-F3D7A8D7B8AA</string>
+    <key>MacaroniCameraSourceUUID</key>
+    <string>B9E8C9BB-76BE-4E32-AD53-04E8B9E8C9BB</string>
+    <key>MacaroniCameraSinkUUID</key>
+    <string>C0F9D0CC-87CF-4F43-BE64-05F9C0F9D0CC</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>NSSystemExtensionUsageDescription</key>

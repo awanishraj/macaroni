@@ -2,37 +2,32 @@ import Foundation
 import CoreMediaIO
 import os.log
 
-private let logger = Logger(subsystem: "com.macaroni.camera", category: "stream")
+private let logger = Logger(subsystem: "com.macaroni.camera", category: "sink")
 
-/// Provides the video stream for the virtual camera (SOURCE direction)
-/// Apps like Zoom, FaceTime, Photo Booth read from this stream
-/// Based on OBS's OBSCameraStreamSource - NO placeholder generation, only forwards from sink
-class MacaroniStreamSource: NSObject, CMIOExtensionStreamSource {
+/// Sink stream that receives frames from the main Macaroni app
+/// Based on OBS's OBSCameraStreamSink implementation
+class MacaroniSinkSource: NSObject, CMIOExtensionStreamSource {
 
     private(set) var stream: CMIOExtensionStream!
-    private let device: CMIOExtensionDevice
     private let _formats: [CMIOExtensionStreamFormat]
 
-    // Reference to device source for notifications
     weak var deviceSource: MacaroniDeviceSource?
-
-    private var isStreaming = false
+    var client: CMIOExtensionClient?
 
     init(localizedName: String, streamID: UUID, streamFormats: [CMIOExtensionStreamFormat], device: CMIOExtensionDevice) {
         self._formats = streamFormats
-        self.device = device
         super.init()
 
         stream = CMIOExtensionStream(
             localizedName: localizedName,
             streamID: streamID,
-            direction: .source,  // This is a SOURCE - apps read from this
+            direction: .sink,  // This is a SINK - receives frames from main app
             clockType: .hostTime,
             source: self
         )
 
         let formatCount = streamFormats.count
-        logger.info("Source stream created with ID: \(streamID.uuidString), \(formatCount) formats")
+        logger.info("Sink stream created with ID: \(streamID.uuidString), \(formatCount) formats")
     }
 
     // MARK: - CMIOExtensionStreamSource
@@ -46,7 +41,11 @@ class MacaroniStreamSource: NSObject, CMIOExtensionStreamSource {
     var availableProperties: Set<CMIOExtensionProperty> {
         return [
             .streamActiveFormatIndex,
-            .streamFrameDuration
+            .streamFrameDuration,
+            .streamSinkBufferQueueSize,
+            .streamSinkBuffersRequiredForStartup,
+            .streamSinkBufferUnderrunCount,
+            .streamSinkEndOfData
         ]
     }
 
@@ -61,6 +60,14 @@ class MacaroniStreamSource: NSObject, CMIOExtensionStreamSource {
             streamProperties.frameDuration = CMTime(value: 1, timescale: 30)
         }
 
+        if properties.contains(.streamSinkBufferQueueSize) {
+            streamProperties.sinkBufferQueueSize = 1
+        }
+
+        if properties.contains(.streamSinkBuffersRequiredForStartup) {
+            streamProperties.sinkBuffersRequiredForStartup = 1
+        }
+
         return streamProperties
     }
 
@@ -71,20 +78,27 @@ class MacaroniStreamSource: NSObject, CMIOExtensionStreamSource {
     }
 
     func authorizedToStartStream(for client: CMIOExtensionClient) -> Bool {
+        logger.info("Client authorized to start sink stream - client: \(String(describing: client))")
+        self.client = client
+        // Start streaming immediately when authorized - don't wait for startStream
+        deviceSource?.startStreamingSink(client: client)
         return true
     }
 
     func startStream() throws {
-        guard !isStreaming else { return }
-        isStreaming = true
-        deviceSource?.startStreaming()
-        logger.info("Source stream started - waiting for frames from sink")
+        let hasClient = self.client != nil
+        logger.info("Sink stream startStream called - client exists: \(hasClient)")
+        // Also try to start here in case authorizedToStartStream wasn't called
+        if let client = self.client {
+            deviceSource?.startStreamingSink(client: client)
+        } else {
+            logger.warning("startStream called but no client available!")
+        }
     }
 
     func stopStream() throws {
-        guard isStreaming else { return }
-        isStreaming = false
-        deviceSource?.stopStreaming()
-        logger.info("Source stream stopped")
+        logger.info("Sink stream stopStream called")
+        deviceSource?.stopStreamingSink()
+        client = nil
     }
 }

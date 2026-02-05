@@ -1,8 +1,7 @@
 import Foundation
 import AVFoundation
 import Combine
-import CoreImage
-import AppKit
+import CoreImage  // For CIImage in frame processing
 import os.log
 
 private let logger = Logger(subsystem: "com.macaroni.app", category: "CameraManager")
@@ -13,10 +12,6 @@ struct CameraDevice: Identifiable, Hashable {
     let name: String
     let position: AVCaptureDevice.Position
     let deviceType: AVCaptureDevice.DeviceType
-
-    var isBuiltIn: Bool {
-        position != .unspecified
-    }
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
@@ -32,22 +27,16 @@ final class CameraManager: NSObject, ObservableObject {
     @Published private(set) var cameras: [CameraDevice] = []
     @Published private(set) var selectedCamera: CameraDevice?
     @Published private(set) var isCapturing: Bool = false
-    @Published private(set) var currentFrame: CIImage?
-    @Published private(set) var processedFrame: NSImage?
     @Published private(set) var authorizationStatus: AVAuthorizationStatus = .notDetermined
 
-    /// Preview layer for displaying camera feed
-    private(set) var previewLayer: AVCaptureVideoPreviewLayer?
-
     private var captureSession: AVCaptureSession?
-    private var videoOutput: AVCaptureVideoDataOutput?
     private let videoQueue = DispatchQueue(label: "com.macaroni.camera.video", qos: .userInteractive)
 
     private let frameProcessor = FrameProcessor()
     private var cancellables = Set<AnyCancellable>()
 
-    // Virtual camera server for sharing frames with extension
-    private let virtualCameraServer = VirtualCameraServer.shared
+    // Sink sender for passing frames to camera extension
+    private let sinkSender = CMIOSinkSender.shared
 
     override init() {
         super.init()
@@ -103,8 +92,8 @@ final class CameraManager: NSObject, ObservableObject {
 
         setupCaptureSession(with: device)
 
-        // Start virtual camera server
-        virtualCameraServer.start()
+        // Connect to virtual camera sink (may fail if extension not active, which is fine)
+        _ = sinkSender.connect()
 
         videoQueue.async { [weak self] in
             self?.captureSession?.startRunning()
@@ -115,15 +104,13 @@ final class CameraManager: NSObject, ObservableObject {
     }
 
     func stopCapture() {
-        // Stop virtual camera server
-        virtualCameraServer.stop()
+        // Disconnect from virtual camera sink
+        sinkSender.disconnect()
 
         videoQueue.async { [weak self] in
             self?.captureSession?.stopRunning()
             DispatchQueue.main.async {
                 self?.isCapturing = false
-                self?.currentFrame = nil
-                self?.processedFrame = nil
             }
         }
     }
@@ -134,14 +121,6 @@ final class CameraManager: NSObject, ObservableObject {
         } else {
             startCapture()
         }
-    }
-
-    // MARK: - Frame Access for Virtual Camera
-
-    /// Get the latest processed frame for virtual camera output
-    func getLatestProcessedFrame() -> CIImage? {
-        guard let frame = currentFrame else { return nil }
-        return frameProcessor.process(frame)
     }
 
     // MARK: - Private Methods
@@ -157,14 +136,16 @@ final class CameraManager: NSObject, ObservableObject {
             position: .unspecified
         )
 
-        cameras = discoverySession.devices.map { device in
-            CameraDevice(
-                id: device.uniqueID,
-                name: device.localizedName,
-                position: device.position,
-                deviceType: device.deviceType
-            )
-        }
+        cameras = discoverySession.devices
+            .filter { !$0.localizedName.contains("Macaroni") } // Filter out our virtual camera
+            .map { device in
+                CameraDevice(
+                    id: device.uniqueID,
+                    name: device.localizedName,
+                    position: device.position,
+                    deviceType: device.deviceType
+                )
+            }
 
         // Restore saved camera or select first available
         if let savedID = Preferences.shared.selectedCameraID,
@@ -191,7 +172,7 @@ final class CameraManager: NSObject, ObservableObject {
             session.addInput(input)
         }
 
-        // Add output
+        // Add output for frame processing
         let output = AVCaptureVideoDataOutput()
         output.videoSettings = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
@@ -203,13 +184,7 @@ final class CameraManager: NSObject, ObservableObject {
             session.addOutput(output)
         }
 
-        videoOutput = output
         captureSession = session
-
-        // Create preview layer
-        let preview = AVCaptureVideoPreviewLayer(session: session)
-        preview.videoGravity = .resizeAspectFill
-        previewLayer = preview
     }
 
     private func setupNotifications() {
@@ -233,6 +208,9 @@ final class CameraManager: NSObject, ObservableObject {
             }
             self?.setupCameras()
         }
+
+        // Extension updates now require app restart (macOS limitation)
+        // The CameraMenuView listens for .cameraExtensionNeedsRestart and shows UI
     }
 
     private func setupShortcutHandlers() {
@@ -295,27 +273,12 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
 
         let ciImage = CIImage(cvImageBuffer: imageBuffer)
 
-        // Process frame
+        // Process frame and send to virtual camera
         let processedCIImage = frameProcessor.process(ciImage)
-
-        // Send to virtual camera server
-        virtualCameraServer.sendFrame(processedCIImage)
-
-        // Convert to NSImage for preview
-        let context = CIContext()
-        guard let cgImage = context.createCGImage(processedCIImage, from: processedCIImage.extent) else {
-            return
-        }
-
-        let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-
-        DispatchQueue.main.async { [weak self] in
-            self?.currentFrame = ciImage
-            self?.processedFrame = nsImage
-        }
+        sinkSender.sendFrame(processedCIImage)
     }
 
     func captureOutput(_ output: AVCaptureOutput, didDrop sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // Frame was dropped, could log for debugging
+        // Frame dropped - normal under heavy load
     }
 }

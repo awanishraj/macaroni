@@ -3,15 +3,23 @@ import SwiftUI
 import Combine
 
 enum MenuBarDisplayMode: String, CaseIterable, Codable {
-    case temperature = "temperature"
-    case volume = "volume"
     case iconOnly = "iconOnly"
+    case volume = "volume"
+    case temperature = "temperature"
 
     var displayName: String {
         switch self {
         case .temperature: return "Temperature"
         case .volume: return "Volume"
         case .iconOnly: return "Icon Only"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .iconOnly: return "circle.fill"
+        case .volume: return "speaker.wave.2"
+        case .temperature: return "thermometer.medium"
         }
     }
 }
@@ -37,6 +45,15 @@ enum CameraRotation: Int, CaseIterable, Codable {
         case .rotate90: return .rotate180
         case .rotate180: return .rotate270
         case .rotate270: return .none
+        }
+    }
+
+    var previous: CameraRotation {
+        switch self {
+        case .none: return .rotate270
+        case .rotate90: return .none
+        case .rotate180: return .rotate90
+        case .rotate270: return .rotate180
         }
     }
 }

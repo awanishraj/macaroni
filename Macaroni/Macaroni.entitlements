@@ -6,6 +6,10 @@
 	<true/>
 	<key>com.apple.security.app-sandbox</key>
 	<false/>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>43QM98RMK6.com.macaroni.app</string>
+	</array>
 	<key>com.apple.security.device.camera</key>
 	<true/>
 </dict>

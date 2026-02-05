@@ -146,7 +146,9 @@ final class FanCurveController: ObservableObject {
 
     private func checkHelperInstallation() {
         let helperPath = "/Library/PrivilegedHelperTools/com.macaroni.fanhelper"
-        isHelperInstalled = FileManager.default.fileExists(atPath: helperPath)
+        let plistPath = "/Library/LaunchDaemons/com.macaroni.fanhelper.plist"
+        isHelperInstalled = FileManager.default.fileExists(atPath: helperPath) &&
+                           FileManager.default.fileExists(atPath: plistPath)
         helperInstalled = isHelperInstalled
     }
 
