@@ -190,6 +190,9 @@ Macaroni.app
 
 </details>
 
+> [!NOTE]
+> **Private API usage** — Macaroni uses undocumented Apple IOKit APIs (`IOAVService` for DDC/CI display control, `IOHIDEventSystem` for thermal sensor reading). These are not part of any stable public SDK and may break in future macOS releases. The code includes fallbacks and error handling to degrade gracefully if Apple changes or removes these interfaces.
+
 ## Dependencies
 
 | Package | Purpose |
