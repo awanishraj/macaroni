@@ -85,10 +85,11 @@ CMIOExtension providing virtual camera output. Fully implemented with:
 
 ### Makefile Commands
 ```bash
-make run    # Kill → Clean → Build → Launch (recommended)
-make build  # Build only
-make clean  # Clean build artifacts
-make kill   # Kill running instances
+make run      # Kill → Clean → Build → Launch (recommended)
+make install  # Kill → Clean → Build → Install to /Applications → Launch
+make build    # Build only
+make clean    # Clean build artifacts
+make kill     # Kill running instances
 ```
 
 ### Project Generation
