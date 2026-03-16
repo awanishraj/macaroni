@@ -24,7 +24,8 @@ clean:
 # Build the project
 build:
 	@echo "Building..."
-	@xcodebuild -project Macaroni.xcodeproj -scheme Macaroni -configuration Debug build 2>&1 | grep -E "(\*\* BUILD|error:)" || true
+	@xcodebuild -project Macaroni.xcodeproj -scheme Macaroni -configuration Debug build 2>&1 | tail -20
+	@test -d $(APP) || (echo "Build failed: $(APP) not found" && exit 1)
 
 # Install to /Applications (clean replace)
 install: kill clean build
