@@ -4,7 +4,6 @@ struct DisplayMenuView: View {
     @EnvironmentObject var displayManager: DisplayManager
     @EnvironmentObject var preferences: Preferences
 
-    @StateObject private var solarService = SolarBrightnessService()
     @State private var resolutionIndex: Double = 0
     @State private var isEditingResolution: Bool = false
 
@@ -27,10 +26,9 @@ struct DisplayMenuView: View {
         .padding(.top, 12)
         .padding(.bottom, 16)
         .onAppear {
-            solarService.displayManager = displayManager
-            if preferences.autoBrightnessEnabled {
-                solarService.start()
-            }
+            // Auto-brightness runs app-wide (started from the menu bar label) — it
+            // must NOT be tied to this view's lifecycle, or it would stop scheduling
+            // brightness the moment the Display tab closes.
             updateResolutionIndex()
         }
         .onChange(of: displayManager.displayRefreshToken) { _, _ in

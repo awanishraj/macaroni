@@ -45,12 +45,19 @@ final class AudioManager: ObservableObject {
 
     private let simplyCA = SimplyCoreAudio()
     private var cancellables = Set<AnyCancellable>()
+    private var notificationObservers: [NSObjectProtocol] = []
     private var isUpdatingFromExternal = false
 
     init() {
         setupDevices()
         setupNotifications()
         setupShortcutHandlers()
+    }
+
+    deinit {
+        // Block-based observers must be removed by their returned token, not by
+        // `removeObserver(self)` (which only matches selector-based observers).
+        notificationObservers.forEach { NotificationCenter.default.removeObserver($0) }
     }
 
     // MARK: - Public API
@@ -160,7 +167,7 @@ final class AudioManager: ObservableObject {
     private func setupDevices() {
         let devices = simplyCA.allOutputDevices.compactMap { device -> AudioDevice? in
             guard let uid = device.uid else { return nil }
-            let name = device.name ?? "Unknown Device"
+            let name = device.name
 
             let volume = device.virtualMainVolume(scope: .output) ?? 0.5
             let muted = device.isMuted(channel: 0, scope: .output) ?? false
@@ -199,40 +206,40 @@ final class AudioManager: ObservableObject {
 
     private func setupNotifications() {
         // Device list changes
-        NotificationCenter.default.addObserver(
+        notificationObservers.append(NotificationCenter.default.addObserver(
             forName: .deviceListChanged,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             self?.setupDevices()
-        }
+        })
 
         // Default device changes
-        NotificationCenter.default.addObserver(
+        notificationObservers.append(NotificationCenter.default.addObserver(
             forName: .defaultOutputDeviceChanged,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             self?.handleDefaultDeviceChange()
-        }
+        })
 
         // Volume changes (event-based, no polling needed)
-        NotificationCenter.default.addObserver(
+        notificationObservers.append(NotificationCenter.default.addObserver(
             forName: .deviceVolumeDidChange,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             self?.updateVolumeFromDevice()
-        }
+        })
 
         // Mute state changes
-        NotificationCenter.default.addObserver(
+        notificationObservers.append(NotificationCenter.default.addObserver(
             forName: .deviceMuteDidChange,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             self?.updateVolumeFromDevice()
-        }
+        })
     }
 
     private func handleDefaultDeviceChange() {

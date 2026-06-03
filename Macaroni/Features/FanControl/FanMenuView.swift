@@ -112,10 +112,10 @@ struct FanMenuView: View {
         .padding(.top, 12)
         .padding(.bottom, 16)
         .onAppear {
+            // Idempotent — control is normally already running (started from the
+            // always-present menu bar label). Do NOT stop on disappear: fan control
+            // must keep running in the background when the menu/tab is closed.
             fanController.start(with: thermalService)
-        }
-        .onDisappear {
-            fanController.stopControl()
         }
     }
 

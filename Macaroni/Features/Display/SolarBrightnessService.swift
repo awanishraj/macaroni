@@ -92,22 +92,43 @@ final class SolarBrightnessService: NSObject, ObservableObject {
 
     func start() {
         let status = locationManager.authorizationStatus
-        if status == .authorized || status == .authorizedAlways {
-            // Already authorized - request location and start updates
+        logger.info("Auto-brightness start - authorization status: \(status.rawValue)")
+
+        switch status {
+        case .authorizedAlways, .authorizedWhenInUse, .authorized:
+            // Already authorized - request a fix. startUpdating() runs in
+            // didUpdateLocations once the fix arrives (requestLocation is async,
+            // so currentLocation is usually still nil right here on first run).
             locationManager.requestLocation()
             if currentLocation != nil {
                 startUpdating()
             }
-        } else if status == .notDetermined {
-            // Need to request authorization
+        case .notDetermined:
+            // Triggers the system prompt; grant flows through
+            // locationManagerDidChangeAuthorization.
             locationManager.requestWhenInUseAuthorization()
+        case .denied, .restricted:
+            // No permission - fall back to an approximate location so brightness
+            // still tracks day/night roughly instead of doing nothing.
+            useFallbackLocation()
+        @unknown default:
+            break
         }
-        // If denied, we'll use default location in didFailWithError
     }
 
     func stop() {
         updateTimer?.invalidate()
         updateTimer = nil
+    }
+
+    /// Approximate location used when Location Services are unavailable or denied,
+    /// so auto-brightness degrades gracefully instead of silently doing nothing.
+    private func useFallbackLocation() {
+        guard currentLocation == nil else { return }  // don't override a real fix
+        logger.info("Auto-brightness using fallback location (no Location Services)")
+        currentLocation = CLLocation(latitude: 37.7749, longitude: -122.4194)  // San Francisco
+        updateSolarTimes()
+        startUpdating()
     }
 
     // MARK: - Private Methods
@@ -133,6 +154,9 @@ final class SolarBrightnessService: NSObject, ObservableObject {
     private func startUpdating() {
         updateSolarTimes()
         updateBrightness()
+
+        // Invalidate any existing timer so repeated start() calls don't leak timers
+        updateTimer?.invalidate()
 
         // Update every 30 seconds for smooth transitions
         updateTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
@@ -285,11 +309,12 @@ final class SolarBrightnessService: NSObject, ObservableObject {
 extension SolarBrightnessService: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
-        case .authorized, .authorizedAlways:
+        case .authorized, .authorizedAlways, .authorizedWhenInUse:
             locationStatus = .authorized
             manager.requestLocation()
         case .denied, .restricted:
             locationStatus = .denied
+            useFallbackLocation()
         case .notDetermined:
             locationStatus = .notDetermined
         @unknown default:
@@ -307,11 +332,6 @@ extension SolarBrightnessService: CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         logger.error("Location error: \(error.localizedDescription)")
-
-        // Use a default location if location services fail
-        // Default to a reasonable mid-latitude location
-        currentLocation = CLLocation(latitude: 37.7749, longitude: -122.4194)  // San Francisco
-        updateSolarTimes()
-        startUpdating()
+        useFallbackLocation()
     }
 }

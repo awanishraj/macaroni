@@ -31,6 +31,7 @@ final class FanCurveController: ObservableObject {
     private var thermalService: ThermalService?
     private var updateTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
+    private var isRunning = false
 
     // XPC connection to privileged helper
     private var helperConnection: NSXPCConnection?
@@ -56,6 +57,11 @@ final class FanCurveController: ObservableObject {
     // MARK: - Public API
 
     func start(with thermalService: ThermalService) {
+        // Idempotent: control runs for the app's lifetime, independent of any
+        // view's appearance. Re-entry would double-subscribe and duplicate timers.
+        guard !isRunning else { return }
+        isRunning = true
+
         self.thermalService = thermalService
 
         // Subscribe to temperature changes
@@ -92,6 +98,7 @@ final class FanCurveController: ObservableObject {
     }
 
     func stopControl() {
+        isRunning = false
         updateTimer?.invalidate()
         updateTimer = nil
         cancellables.removeAll()

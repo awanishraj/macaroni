@@ -9,6 +9,7 @@ struct MacaroniApp: App {
     @StateObject private var cameraManager = CameraManager()
     @StateObject private var thermalService = ThermalService()
     @StateObject private var fanCurveController = FanCurveController()
+    @StateObject private var solarBrightnessService = SolarBrightnessService()
     @StateObject private var preferences = Preferences.shared
     @StateObject private var systemExtensionManager = SystemExtensionManager.shared
 
@@ -33,6 +34,9 @@ struct MacaroniApp: App {
             MenuBarLabel()
                 .environmentObject(thermalService)
                 .environmentObject(audioManager)
+                .environmentObject(fanCurveController)
+                .environmentObject(displayManager)
+                .environmentObject(solarBrightnessService)
                 .environmentObject(preferences)
         }
         .menuBarExtraStyle(.window)
@@ -42,6 +46,9 @@ struct MacaroniApp: App {
 struct MenuBarLabel: View {
     @EnvironmentObject var thermalService: ThermalService
     @EnvironmentObject var audioManager: AudioManager
+    @EnvironmentObject var fanController: FanCurveController
+    @EnvironmentObject var displayManager: DisplayManager
+    @EnvironmentObject var solarBrightnessService: SolarBrightnessService
     @EnvironmentObject var preferences: Preferences
 
     private var volumeIconName: String {
@@ -57,17 +64,30 @@ struct MenuBarLabel: View {
     }
 
     var body: some View {
-        switch preferences.menuBarDisplayMode {
-        case .temperature:
-            if let temp = thermalService.cpuTemperature {
-                Text("\(Int(temp))°")
-            } else {
+        Group {
+            switch preferences.menuBarDisplayMode {
+            case .temperature:
+                if let temp = thermalService.cpuTemperature {
+                    Text("\(Int(temp))°")
+                } else {
+                    Image("MenuBarIcon")
+                }
+            case .volume:
+                Image(systemName: volumeIconName)
+            case .iconOnly:
                 Image("MenuBarIcon")
             }
-        case .volume:
-            Image(systemName: volumeIconName)
-        case .iconOnly:
-            Image("MenuBarIcon")
+        }
+        // The label is always present in the menu bar, so this starts background
+        // services at app launch and keeps them running regardless of menu/tab
+        // visibility. Auto-brightness self-manages start/stop via its preference
+        // binding; we just give it the display manager and an initial kick.
+        .onAppear {
+            fanController.start(with: thermalService)
+            solarBrightnessService.displayManager = displayManager
+            if preferences.autoBrightnessEnabled {
+                solarBrightnessService.start()
+            }
         }
     }
 }
